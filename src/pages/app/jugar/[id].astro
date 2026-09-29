@@ -1,0 +1,20 @@
+---
+import Base from '../../../layouts/Base.astro';
+import GamePlayer from '../../../components/game/GamePlayer';
+import type { ActivityRow } from '../../../lib/db';
+import type { AgeGroup } from '../../../lib/catalog';
+
+const s = Astro.locals.student!;
+const db = Astro.locals.db;
+const id = Number(Astro.params.id);
+// Students can only open activities assigned to their class.
+const a = await db.prepare(
+  `SELECT a.* FROM activities a WHERE a.id = ? AND EXISTS (SELECT 1 FROM assignments x WHERE x.activity_id = a.id AND x.class_id = ?)`,
+).bind(id, s.class_id).first<ActivityRow>();
+if (!a) return Astro.redirect('/app');
+const asg = Number(Astro.url.searchParams.get('a')) || null;
+const activity = { id: a.id, type: a.type, title: a.title, content: JSON.parse(a.content_json) };
+---
+<Base title={`${a.title} · ChessKids`} age={s.age_group}>
+  <GamePlayer client:only="preact" activity={activity} assignmentId={asg} ageGroup={s.age_group as AgeGroup} exitUrl="/app" />
+</Base>

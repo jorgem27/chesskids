@@ -1,0 +1,11 @@
+---
+import CoachLayout from '../../../../layouts/CoachLayout.astro';
+import ActivityEditor from '../../../../components/coach/ActivityEditor';
+import { canEditActivity } from '../../../../lib/db';
+const a = await canEditActivity(Astro.locals.db, Astro.locals.coach!.id, Number(Astro.params.id));
+if (!a) return Astro.redirect('/profe/actividades');
+---
+<CoachLayout title={`Editar · ${a.title}`}>
+  <ActivityEditor client:only="preact" id={a.id} clubId={a.club_id} type={a.type}
+    initial={{ title: a.title, description: a.description, xpReward: a.xp_reward, content: JSON.parse(a.content_json) }} />
+</CoachLayout>

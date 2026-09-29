@@ -1,0 +1,15 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import PrintCards from '../../../../components/coach/PrintCards';
+import { classPerm, type ClassRow } from '../../../../lib/db';
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const id = Number(Astro.params.id);
+const perm = await classPerm(db, coach.id, id);
+if (!perm || !(perm.is_owner || perm.can_manage_students)) return Astro.redirect(`/profe/clase/${id}`);
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(id).first<ClassRow>())!;
+const { results } = await db.prepare('SELECT id, display_name AS name, avatar, username, login_token AS token FROM students WHERE class_id = ? AND archived = 0 ORDER BY display_name').bind(id).all<any>();
+---
+<Base title={`Tarjetas · ${cls.name}`} bodyClass="bg-white">
+  <PrintCards client:only="preact" classId={id} className={cls.name} classCode={cls.code} origin={Astro.url.origin} students={results} />
+</Base>

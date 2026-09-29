@@ -1,0 +1,162 @@
+---
+import CoachLayout from '../../../../layouts/CoachLayout.astro';
+import StudentManager from '../../../../components/coach/StudentManager';
+import AssignPanel from '../../../../components/coach/AssignPanel';
+import { GAME_META } from '../../../../games/meta';
+import { classPerm, today, type ClassRow } from '../../../../lib/db';
+import { addDays, relativeDay } from '../../../../lib/dates';
+import { levelFromXp } from '../../../../lib/rewards';
+
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const id = Number(Astro.params.id);
+const perm = await classPerm(db, coach.id, id);
+if (!perm) return Astro.redirect('/profe');
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(id).first<ClassRow>())!;
+const canManage = !!(perm.is_owner || perm.can_manage_students);
+const canCreate = !!(perm.is_owner || perm.can_create_content);
+const canView = !!(perm.is_owner || perm.can_view_progress);
+const tab = Astro.url.searchParams.get('tab') ?? 'alumnos';
+const t = today();
+const origin = Astro.url.origin;
+
+const { results: studentsRaw } = await db.prepare('SELECT * FROM students WHERE class_id = ? AND archived = 0 ORDER BY display_name').bind(id).all<any>();
+const students = studentsRaw.map((s) => ({
+  id: s.id, name: s.display_name, avatar: s.avatar, username: s.username, token: canManage ? s.login_token : '', age_group: s.age_group,
+  xp: s.xp, level: levelFromXp(s.xp), streak: s.last_active_day && s.last_active_day >= addDays(t, -1) ? s.streak : 0,
+  last: relativeDay(s.last_active_day, t), total_seconds: s.total_seconds, puzzles: s.puzzles_solved,
+}));
+
+const { results: assignments } = await db.prepare(
+  `SELECT x.id, x.activity_id, a.type, a.title, x.starts_on, x.due_on, x.note,
+     (SELECT COUNT(DISTINCT at.student_id) FROM attempts at JOIN students st ON st.id = at.student_id AND st.class_id = x.class_id AND st.archived = 0 WHERE at.activity_id = x.activity_id) AS done_count,
+     (SELECT AVG(best) FROM (SELECT MAX(at.stars) AS best FROM attempts at JOIN students st ON st.id = at.student_id AND st.class_id = x.class_id WHERE at.activity_id = x.activity_id GROUP BY at.student_id)) AS avg_stars
+   FROM assignments x JOIN activities a ON a.id = x.activity_id WHERE x.class_id = ? ORDER BY x.due_on DESC, x.id DESC`,
+).bind(id).all<any>();
+
+let library: any[] = [];
+if (tab === 'deberes') {
+  const { results } = await db.prepare('SELECT id, type, title, content_json FROM activities WHERE club_id = ? ORDER BY updated_at DESC').bind(cls.club_id).all<any>();
+  library = results.map((r) => ({ id: r.id, type: r.type, title: r.title, count: (() => { try { return GAME_META[r.type]?.count(JSON.parse(r.content_json)) ?? 0; } catch { return 0; } })() }));
+}
+
+// Progress grid: best stars per student per assignment (last 12 assignments)
+let grid = new Map<string, number>();
+const gridAsg = assignments.slice(0, 12).reverse();
+if (tab === 'progreso' && canView) {
+  const { results } = await db.prepare(
+    `SELECT at.student_id, at.activity_id, MAX(at.stars) AS stars FROM attempts at JOIN students s ON s.id = at.student_id WHERE s.class_id = ? GROUP BY at.student_id, at.activity_id`,
+  ).bind(id).all<{ student_id: number; activity_id: number; stars: number }>();
+  grid = new Map(results.map((r) => [`${r.student_id}:${r.activity_id}`, r.stars]));
+}
+
+const { results: coaches } = await db.prepare(
+  `SELECT c.id, c.name, c.email, p.* FROM class_permissions p JOIN coaches c ON c.id = p.coach_id WHERE p.class_id = ? ORDER BY p.is_owner DESC, c.name`,
+).bind(id).all<any>();
+
+const tabs = [
+  { id: 'alumnos', label: '👧 Alumnos y accesos' },
+  { id: 'deberes', label: '🎒 Deberes' },
+  ...(canView ? [{ id: 'progreso', label: '📈 Progreso' }] : []),
+  { id: 'profes', label: '🤝 Profes' },
+];
+const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)} min`);
+---
+<CoachLayout title={cls.name} wide={tab === 'progreso'}>
+  <div class="flex flex-wrap items-center gap-4">
+    <span class="text-5xl">{cls.emoji}</span>
+    <div class="flex-1">
+      <h1 class="font-display text-3xl font-extrabold">{cls.name}</h1>
+      <p class="text-sm text-slate-500">Código <b class="font-mono text-violet-700">{cls.code}</b> · {students.length} alumnos</p>
+    </div>
+    <a href={`/profe/clase/${id}/proyector`} class="ck-btn ck-btn-orange">📽️ Modo proyector</a>
+  </div>
+
+  <nav class="mt-5 flex flex-wrap gap-2">
+    {tabs.map((tb) => <a href={`?tab=${tb.id}`} class={`rounded-2xl px-4 py-2 font-bold ${tab === tb.id ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{tb.label}</a>)}
+  </nav>
+
+  <div class="mt-5">
+    {tab === 'alumnos' && (
+      <StudentManager client:load classId={id} classCode={cls.code} className={cls.name} origin={origin} canManage={canManage} students={students} />
+    )}
+
+    {tab === 'deberes' && (
+      <AssignPanel client:load classId={id} className={cls.name} classCode={cls.code} origin={origin} canCreate={canCreate}
+        library={library} assignments={assignments} studentCount={students.length} today={t} nextWeek={addDays(t, 7)} />
+    )}
+
+    {tab === 'progreso' && canView && (
+      <div class="ck-card overflow-x-auto !p-0">
+        <table class="w-full min-w-[700px] text-sm">
+          <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr>
+              <th class="sticky left-0 bg-slate-50 p-3">Alumno</th>
+              <th class="p-3">Nivel</th><th class="p-3">Racha</th><th class="p-3">Problemas</th><th class="p-3">Tiempo</th><th class="p-3">Última vez</th>
+              {gridAsg.map((a) => <th class="p-3 text-center" title={a.title}>{GAME_META[a.type]?.emoji}<br /><span class="inline-block max-w-24 truncate normal-case">{a.title}</span></th>)}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {students.map((s) => (
+              <tr>
+                <td class="sticky left-0 bg-white p-3 font-bold"><span class="mr-1 text-xl">{s.avatar}</span>{s.name}</td>
+                <td class="p-3">{s.level} <span class="text-xs text-slate-400">({s.xp} XP)</span></td>
+                <td class="p-3">{s.streak > 0 ? `🔥 ${s.streak}` : '—'}</td>
+                <td class="p-3">{s.puzzles}</td>
+                <td class="p-3">{fmtTime(s.total_seconds)}</td>
+                <td class={`p-3 ${s.last === 'nunca' ? 'text-rose-500' : ''}`}>{s.last}</td>
+                {gridAsg.map((a) => {
+                  const st = grid.get(`${s.id}:${a.activity_id}`);
+                  return <td class="p-3 text-center">{st === undefined ? <span class="text-slate-300">·</span> : <span title={`${st} estrellas`}>{'⭐'.repeat(st) || '✔️'}</span>}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {tab === 'profes' && (
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div class="ck-card">
+          <h2 class="mb-3 font-display text-xl font-extrabold">Profes con acceso</h2>
+          <ul class="space-y-2">
+            {coaches.map((c) => (
+              <li class="rounded-2xl bg-slate-50 p-3 text-sm">
+                <p class="font-bold">{c.name} <span class="font-normal text-slate-500">{c.email}</span></p>
+                <p class="mt-1 flex flex-wrap gap-1 text-xs">
+                  {c.is_owner ? <span class="rounded-full bg-violet-100 px-2 py-0.5 font-bold text-violet-700">👑 Responsable</span> : (
+                    <>
+                      {c.can_view_progress ? <span class="rounded-full bg-sky-100 px-2 py-0.5">📈 Ver progreso</span> : null}
+                      {c.can_create_content ? <span class="rounded-full bg-amber-100 px-2 py-0.5">🧩 Poner deberes</span> : null}
+                      {c.can_manage_students ? <span class="rounded-full bg-emerald-100 px-2 py-0.5">👧 Gestionar alumnos</span> : null}
+                    </>
+                  )}
+                </p>
+                {perm.is_owner && !c.is_owner && (
+                  <form data-api="/api/coach/permissions" data-method="DELETE" class="mt-2">
+                    <input type="hidden" name="classId" value={id} /><input type="hidden" name="coachId" value={c.id} />
+                    <button type="submit" class="text-xs font-bold text-rose-600">Quitar acceso</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {perm.is_owner ? (
+          <form data-api="/api/coach/permissions" class="ck-card space-y-3">
+            <h2 class="font-display text-xl font-extrabold">➕ Compartir con otro profe</h2>
+            <input type="hidden" name="classId" value={id} />
+            <input name="email" type="email" required placeholder="Email del profe (ya registrado)" class="ck-input w-full" />
+            <label class="flex items-center gap-2"><input type="checkbox" name="can_view_progress" checked /> 📈 Ver el progreso de los alumnos</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="can_create_content" /> 🧩 Crear juegos y poner deberes en esta clase</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="can_manage_students" /> 👧 Gestionar alumnos y accesos</label>
+            <p class="text-xs text-slate-500">Si ya tiene acceso, se actualizan sus permisos.</p>
+            <p data-error class="text-sm font-bold text-rose-600"></p>
+            <button type="submit" class="ck-btn ck-btn-primary">Guardar permisos</button>
+          </form>
+        ) : <p class="ck-card text-slate-500">Solo el profe responsable puede cambiar los permisos.</p>}
+      </div>
+    )}
+  </div>
+</CoachLayout>

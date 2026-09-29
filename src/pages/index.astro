@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+if (Astro.locals.student) return Astro.redirect('/app');
+if (Astro.locals.coach) return Astro.redirect('/profe');
+const pieces = ['♞', '♛', '♜', '♝', '♚', '♟'];
+---
+<Base title="ChessKids Academy">
+  <div class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 px-6 text-white">
+    {pieces.map((p, i) => (
+      <span class="ck-float pointer-events-none absolute select-none text-7xl opacity-20 md:text-9xl"
+        style={`left:${[6, 80, 14, 70, 44, 88][i]}%; top:${[10, 8, 72, 70, 4, 40][i]}%; animation-delay:${i * 0.5}s`}>{p}</span>
+    ))}
+    <div class="ck-rise text-8xl drop-shadow-lg md:text-9xl">♞</div>
+    <h1 class="ck-rise mt-2 text-center font-display text-5xl font-extrabold drop-shadow-lg md:text-7xl" style="animation-delay:.1s">ChessKids Academy</h1>
+    <p class="ck-rise mt-3 text-center text-xl font-bold opacity-95 md:text-2xl" style="animation-delay:.2s">¡Aprende ajedrez jugando, gana estrellas y descubre reinos!</p>
+    <div class="ck-rise mt-10 grid w-full max-w-xl gap-4 sm:grid-cols-2" style="animation-delay:.35s">
+      <a href="/entrar" class="ck-btn bg-white py-6 text-2xl text-violet-700" style="box-shadow:0 6px 0 rgb(0 0 0/.2)">🎒 Soy alumno</a>
+      <a href="/profe/login" class="ck-btn bg-violet-900/40 py-6 text-2xl text-white backdrop-blur" style="box-shadow:0 6px 0 rgb(0 0 0/.2)">🧑‍🏫 Soy profe</a>
+    </div>
+  </div>
+</Base>

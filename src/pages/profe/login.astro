@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+if (Astro.locals.coach) return Astro.redirect('/profe');
+---
+<Base title="Acceso profes · ChessKids">
+  <div class="flex min-h-dvh items-center justify-center bg-gradient-to-br from-violet-600 to-indigo-800 p-4">
+    <form data-api="/api/auth/coach-login" data-redirect="/profe" class="ck-card w-full max-w-sm space-y-3">
+      <a href="/" class="text-sm font-bold text-violet-600">← Inicio</a>
+      <h1 class="font-display text-3xl font-extrabold text-violet-800">🧑‍🏫 Acceso profes</h1>
+      <input name="email" type="email" required placeholder="Email" class="ck-input w-full" autocomplete="username" />
+      <input name="password" type="password" required placeholder="Contraseña" class="ck-input w-full" autocomplete="current-password" />
+      <p data-error class="text-sm font-bold text-rose-600"></p>
+      <button type="submit" class="ck-btn ck-btn-primary w-full">Entrar</button>
+      <p class="text-center text-sm text-slate-500">¿Nuevo? <a href="/profe/registro" class="font-bold text-violet-600">Crea tu cuenta</a></p>
+    </form>
+  </div>
+  <script src="../../scripts/apiform.ts"></script>
+</Base>

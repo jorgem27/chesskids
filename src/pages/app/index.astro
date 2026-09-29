@@ -1,0 +1,166 @@
+---
+import StudentLayout from '../../layouts/StudentLayout.astro';
+import Welcome from '../../components/student/Welcome';
+import { GAME_META } from '../../games/meta';
+import { studentMissions, today, weeklyLeaderboard, xpToday, type ClassRow } from '../../lib/db';
+import { addDays, dueLabel } from '../../lib/dates';
+import { DAILY_GOAL_XP, KINGDOMS, kingdomIndex, levelProgress, STICKERS } from '../../lib/rewards';
+
+const s = Astro.locals.student!;
+const db = Astro.locals.db;
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(s.class_id).first<ClassRow>())!;
+const t = today();
+const [missions, board, dayXp, stickerCount] = await Promise.all([
+  studentMissions(db, s.id, s.class_id),
+  weeklyLeaderboard(db, s.class_id),
+  xpToday(db, s.id),
+  db.prepare('SELECT COUNT(*) AS n FROM student_stickers WHERE student_id = ?').bind(s.id).first<{ n: number }>(),
+]);
+const pending = missions.filter((m) => !m.plays);
+const done = missions.filter((m) => m.plays);
+const lp = levelProgress(s.xp);
+const ki = kingdomIndex(s.xp);
+const kingdom = KINGDOMS[ki];
+const nextK = KINGDOMS[ki + 1];
+const kPct = nextK ? (s.xp - kingdom.xp) / (nextK.xp - kingdom.xp) : 1;
+const goalPct = Math.min(1, dayXp / DAILY_GOAL_XP);
+const R = 34, C = 2 * Math.PI * R;
+const hola = Astro.url.searchParams.get('hola') === '1';
+const played = s.last_active_day === t;
+const streak = s.last_active_day && s.last_active_day >= addDays(t, -1) ? s.streak : 0;
+const countOf = (m: (typeof missions)[number]) => {
+  try { return GAME_META[m.type]?.count(JSON.parse(m.content_json)) ?? 0; } catch { return 0; }
+};
+const medal = ['🥇', '🥈', '🥉'];
+---
+<StudentLayout title="Inicio · ChessKids">
+  {hola && <Welcome client:load name={s.display_name} missions={pending.length} />}
+
+  <!-- Hero -->
+  <section class="ck-card ck-rise relative overflow-hidden !p-0">
+    <div class="bg-gradient-to-r from-violet-600 to-fuchsia-500 p-5 text-white md:p-6">
+      <div class="flex items-center gap-4">
+        <div class="ck-float flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/25 text-6xl md:h-24 md:w-24 md:text-7xl">{s.avatar}</div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-bold opacity-80">{cls.emoji} {cls.name}</p>
+          <h1 class="truncate font-display text-3xl font-extrabold md:text-4xl">¡Hola, {s.display_name}!</h1>
+          <div class="mt-2 flex items-center gap-2">
+            <span class="rounded-full bg-white px-2.5 py-0.5 font-display text-sm font-extrabold text-violet-700">Nivel {lp.level}</span>
+            <div class="h-3 flex-1 overflow-hidden rounded-full bg-white/30"><div class="h-full rounded-full bg-amber-300" style={`width:${Math.max(3, lp.pct * 100)}%`}></div></div>
+            <span class="text-xs font-bold tabular-nums opacity-90">{lp.inLevel}/{lp.needed}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 divide-x divide-slate-100 text-center">
+      <div class="p-3">
+        <p class={`text-3xl ${played ? 'ck-flame' : 'grayscale opacity-50'}`}>🔥</p>
+        <p class="font-display text-2xl font-extrabold text-orange-500">{streak}</p>
+        <p class="text-xs font-bold text-slate-500">{played ? 'días de racha' : '¡juega hoy!'}</p>
+      </div>
+      <div class="flex flex-col items-center p-3">
+        <svg width="56" height="56" viewBox="0 0 80 80" class="-rotate-90">
+          <circle cx="40" cy="40" r={R} stroke="#ede9fe" stroke-width="10" fill="none" />
+          <circle cx="40" cy="40" r={R} stroke={goalPct >= 1 ? '#22c55e' : '#8b5cf6'} stroke-width="10" fill="none" stroke-linecap="round"
+            stroke-dasharray={C} stroke-dashoffset={C * (1 - goalPct)} />
+        </svg>
+        <p class="text-xs font-bold text-slate-500">{goalPct >= 1 ? '¡Meta diaria! ✅' : `${dayXp}/${DAILY_GOAL_XP} XP hoy`}</p>
+      </div>
+      <div class="p-3">
+        <p class="text-3xl">⭐</p>
+        <p class="font-display text-2xl font-extrabold text-violet-600">{s.xp}</p>
+        <p class="text-xs font-bold text-slate-500">XP total</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Missions -->
+  <section class="mt-6">
+    <h2 class="mb-3 flex items-center gap-2 font-display text-2xl font-extrabold text-slate-800">🎒 Misiones de la semana
+      {pending.length > 0 && <span class="rounded-full bg-rose-500 px-2.5 text-base text-white">{pending.length}</span>}
+    </h2>
+    {missions.length === 0 && (
+      <div class="ck-card text-center"><p class="text-5xl">🏖️</p><p class="mt-2 font-bold text-slate-600">¡No tienes misiones ahora mismo! Tu profe te pondrá nuevas pronto.</p></div>
+    )}
+    <div class="grid gap-4 sm:grid-cols-2">
+      {[...pending, ...done].map((m, i) => {
+        const meta = GAME_META[m.type];
+        const due = dueLabel(m.due_on, t);
+        const stars = m.best_stars ?? 0;
+        return (
+          <a href={`/app/jugar/${m.activity_id}?a=${m.assignment_id}`} class="group ck-rise block" style={`animation-delay:${i * 0.06}s`}>
+            <div class={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${meta?.gradient ?? 'from-slate-400 to-slate-600'} p-5 text-white shadow-[0_6px_0_rgb(0_0_0/0.15)] transition group-hover:-translate-y-1 group-active:translate-y-1`}>
+              <span class="absolute -right-3 -top-4 text-8xl opacity-25 transition group-hover:rotate-12">{meta?.emoji}</span>
+              <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide">
+                <span class="rounded-full bg-white/25 px-2 py-0.5">{meta?.emoji} {meta?.name}</span>
+                {!m.plays && <span class="animate-pulse rounded-full bg-amber-300 px-2 py-0.5 text-amber-900">¡Nueva!</span>}
+              </div>
+              <h3 class="mt-2 font-display text-2xl font-extrabold leading-tight drop-shadow">{m.title}</h3>
+              {m.note && <p class="mt-1 text-sm font-bold opacity-90">💬 {m.note}</p>}
+              <div class="mt-3 flex items-center justify-between">
+                <span class="text-sm font-bold opacity-90">{countOf(m)} {meta?.countLabel} · +{m.xp_reward} XP</span>
+                <span class={`rounded-full px-2.5 py-0.5 text-xs font-extrabold ${due.tone === 'late' ? 'bg-rose-600' : due.tone === 'soon' ? 'bg-amber-300 text-amber-900' : 'bg-white/25'}`}>{due.text}</span>
+              </div>
+              <div class="mt-3 flex items-center justify-between rounded-2xl bg-white/20 px-3 py-2">
+                <span class="text-2xl tracking-tight">{[0, 1, 2].map((k) => <span class={stars > k ? '' : 'opacity-30 grayscale'}>⭐</span>)}</span>
+                <span class="rounded-xl bg-white px-4 py-1.5 font-display font-extrabold text-violet-700">{m.plays ? 'Repetir ↺' : '¡Jugar! ▶'}</span>
+              </div>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  </section>
+
+  <div class="mt-6 grid gap-4 md:grid-cols-2">
+    <!-- Kingdom -->
+    <a href="/app/mapa" class="ck-card block transition hover:-translate-y-1" style={`background: linear-gradient(135deg, ${kingdom.sky}, white)`}>
+      <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Tu reino</p>
+      <div class="mt-1 flex items-center gap-3">
+        <span class="ck-float text-6xl">{kingdom.emoji}</span>
+        <div class="flex-1">
+          <p class="font-display text-2xl font-extrabold" style={`color:${kingdom.color}`}>{kingdom.name}</p>
+          {nextK ? (
+            <>
+              <div class="mt-1 h-3 overflow-hidden rounded-full bg-slate-200"><div class="h-full rounded-full" style={`width:${Math.max(3, kPct * 100)}%; background:${nextK.color}`}></div></div>
+              <p class="mt-1 text-xs font-bold text-slate-500">{nextK.xp - s.xp} XP para llegar a {nextK.emoji} {nextK.name}</p>
+            </>
+          ) : <p class="text-sm font-bold">¡Has llegado al final! Eres una leyenda 🏆</p>}
+        </div>
+      </div>
+      <p class="mt-3 text-right font-bold text-violet-600">Ver mapa →</p>
+    </a>
+
+    <!-- Stickers -->
+    <a href="/app/album" class="ck-card block bg-gradient-to-br from-amber-50 to-white transition hover:-translate-y-1">
+      <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Álbum de cromos</p>
+      <div class="mt-2 flex items-center gap-3">
+        <span class="text-6xl">📒</span>
+        <div>
+          <p class="font-display text-3xl font-extrabold text-amber-600">{stickerCount?.n ?? 0} / {STICKERS.length}</p>
+          <p class="text-sm font-bold text-slate-500">cromos conseguidos</p>
+        </div>
+      </div>
+      <p class="mt-3 text-right font-bold text-violet-600">Ver álbum →</p>
+    </a>
+  </div>
+
+  <!-- League -->
+  <section class="ck-card mt-6">
+    <h2 class="mb-3 font-display text-2xl font-extrabold">🏆 Liga de la semana</h2>
+    <ol class="space-y-2">
+      {board.slice(0, 10).map((r, i) => (
+        <li class={`flex items-center gap-3 rounded-2xl px-3 py-2 ${r.id === s.id ? 'bg-violet-100 ring-2 ring-violet-400' : 'bg-slate-50'}`}>
+          <span class="w-8 text-center font-display text-xl font-extrabold text-slate-500">{medal[i] ?? i + 1}</span>
+          <span class="text-3xl">{r.avatar}</span>
+          <span class="flex-1 truncate font-bold">{r.display_name}{r.id === s.id && ' (tú)'}</span>
+          <span class="font-display text-lg font-extrabold text-violet-600 tabular-nums">{r.week_xp} XP</span>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <form method="post" action="/api/auth/logout" class="mt-8 text-center">
+    <button class="text-sm font-bold text-slate-400 hover:text-slate-600">Cerrar sesión en este dispositivo</button>
+  </form>
+</StudentLayout>

@@ -1,0 +1,9 @@
+---
+import Base from '../layouts/Base.astro';
+import LoginHub from '../components/student/LoginHub';
+if (Astro.locals.student) return Astro.redirect('/app');
+const error = Astro.url.searchParams.get('error');
+---
+<Base title="Entrar · ChessKids">
+  <LoginHub client:load error={error} />
+</Base>

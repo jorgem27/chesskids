@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+import AvatarPinLogin from '../../components/student/AvatarPinLogin';
+const code = String(Astro.params.code ?? '').toUpperCase();
+const db = Astro.locals.db;
+const cls = await db.prepare('SELECT id, name, emoji, code FROM classes WHERE code = ?').bind(code).first<{ id: number; name: string; emoji: string; code: string }>();
+if (!cls) return Astro.redirect('/entrar?error=codigo');
+const { results: students } = await db.prepare('SELECT id, display_name AS name, avatar FROM students WHERE class_id = ? AND archived = 0 ORDER BY display_name')
+  .bind(cls.id).all<{ id: number; name: string; avatar: string }>();
+const preselect = Number(Astro.url.searchParams.get('s')) || null;
+---
+<Base title={`${cls.name} · ChessKids`}>
+  <AvatarPinLogin client:load code={cls.code} className={cls.name} classEmoji={cls.emoji} students={students} preselect={preselect} />
+</Base>

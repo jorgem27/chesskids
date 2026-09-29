@@ -1,0 +1,14 @@
+---
+import CoachLayout from '../../../layouts/CoachLayout.astro';
+import ActivityEditor from '../../../components/coach/ActivityEditor';
+import { GAME_META } from '../../../games/meta';
+import { isClubMember } from '../../../lib/db';
+const coach = Astro.locals.coach!;
+const type = Astro.url.searchParams.get('tipo') ?? '';
+const clubId = Number(Astro.url.searchParams.get('club'));
+const meta = GAME_META[type];
+if (!meta || !(await isClubMember(Astro.locals.db, coach.id, clubId))) return Astro.redirect('/profe/actividades');
+---
+<CoachLayout title={`Nueva · ${meta.name}`}>
+  <ActivityEditor client:only="preact" clubId={clubId} type={type} initial={{ title: '', description: '', xpReward: meta.defaultXp, content: meta.defaultContent() }} />
+</CoachLayout>

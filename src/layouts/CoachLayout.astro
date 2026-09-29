@@ -1,0 +1,31 @@
+---
+import Base from './Base.astro';
+interface Props { title: string; wide?: boolean }
+const { title, wide = false } = Astro.props;
+const coach = Astro.locals.coach;
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/profe', label: '🏫 Mis clases', active: path === '/profe' || path.startsWith('/profe/clase') },
+  { href: '/profe/actividades', label: '🧩 Actividades', active: path.startsWith('/profe/actividades') },
+];
+---
+<Base title={`${title} · ChessKids Profe`}>
+  <div class="min-h-dvh bg-slate-50">
+    <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
+        <a href="/profe" class="flex items-center gap-2 font-display text-xl font-extrabold text-violet-700"><span class="text-2xl">♞</span> ChessKids <span class="rounded-full bg-violet-100 px-2 text-xs text-violet-600">PROFE</span></a>
+        <nav class="flex gap-1">
+          {nav.map((n) => <a href={n.href} class={`rounded-xl px-3 py-2 text-sm font-bold ${n.active ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{n.label}</a>)}
+        </nav>
+        <div class="ml-auto flex items-center gap-3 text-sm">
+          <span class="hidden font-bold text-slate-500 sm:inline">{coach?.name}</span>
+          <form method="post" action="/api/auth/logout?to=profe"><button class="ck-btn-sm">Salir</button></form>
+        </div>
+      </div>
+    </header>
+    <main class={`mx-auto px-4 py-6 ${wide ? 'max-w-[1600px]' : 'max-w-7xl'}`}>
+      <slot />
+    </main>
+  </div>
+  <script src="../scripts/apiform.ts"></script>
+</Base>

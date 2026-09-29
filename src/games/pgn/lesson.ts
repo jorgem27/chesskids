@@ -1,0 +1,121 @@
+// Compiles a PGN (with [%ask] tags) into a list of lesson steps using chess.js.
+import { Chess } from 'chess.js';
+import { parseComment, parsePgn, type PgnMove, type Shape } from './parser';
+
+export interface Answer {
+  uci: string;
+  san: string;
+  pts: number; // points for playing it (main answer defaults to 100)
+  text: string; // feedback / explanation
+  isMain: boolean;
+}
+
+export interface WrongKnown { uci: string; san: string; text: string }
+
+export type Step =
+  | { kind: 'auto'; fenBefore: string; uci: string; san: string; text: string; shapes: Shape[]; wait: boolean }
+  | {
+      kind: 'ask';
+      fenBefore: string;
+      question: string;
+      questionShapes: Shape[];
+      answers: Answer[];
+      wrong: WrongKnown[];
+      main: Answer;
+      afterText: string; // comment of the main move (shown after answering)
+      afterShapes: Shape[];
+      afterWait: boolean;
+    };
+
+export interface Lesson {
+  title: string;
+  startFen: string;
+  intro: string;
+  introShapes: Shape[];
+  steps: Step[];
+  maxScore: number;
+  orientation: 'white' | 'black';
+}
+
+function toUci(m: { from: string; to: string; promotion?: string }): string {
+  return m.from + m.to + (m.promotion ?? '');
+}
+
+function tryMove(chess: Chess, san: string) {
+  try {
+    return chess.move(san);
+  } catch {
+    return null;
+  }
+}
+
+export function compileLesson(pgn: string): Lesson {
+  const game = parsePgn(pgn);
+  const startFen =
+    game.headers.FEN ?? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const chess = new Chess(startFen);
+  const intro = parseComment(game.startComment);
+  const steps: Step[] = [];
+  let pendingAsk: { question: string; shapes: Shape[] } | null = intro.ask
+    ? { question: intro.ask, shapes: intro.shapes }
+    : null;
+  let maxScore = 0;
+
+  game.moves.forEach((mv: PgnMove, idx) => {
+    const fenBefore = chess.fen();
+    const info = parseComment(mv.comment);
+    const alternatives = mv.variations.map((v) => v[0]).filter(Boolean);
+    const played = tryMove(chess, mv.san);
+    if (!played) throw new Error(`Jugada ilegal en la línea principal (${idx + 1}): ${mv.san}`);
+
+    if (pendingAsk) {
+      const main: Answer = { uci: toUci(played), san: played.san, pts: info.pts ?? 100, text: info.text, isMain: true };
+      const answers: Answer[] = [main];
+      const wrong: WrongKnown[] = [];
+      for (const alt of alternatives) {
+        const c = new Chess(fenBefore);
+        const am = tryMove(c, alt.san);
+        if (!am) throw new Error(`Jugada ilegal en una variante: ${alt.san}`);
+        const ai = parseComment(alt.comment);
+        if ((ai.pts ?? 0) > 0) answers.push({ uci: toUci(am), san: am.san, pts: ai.pts!, text: ai.text, isMain: false });
+        else wrong.push({ uci: toUci(am), san: am.san, text: ai.text });
+      }
+      maxScore += main.pts;
+      steps.push({
+        kind: 'ask', fenBefore, question: pendingAsk.question, questionShapes: pendingAsk.shapes,
+        answers, wrong, main, afterText: info.text, afterShapes: info.shapes, afterWait: info.wait,
+      });
+    } else {
+      steps.push({ kind: 'auto', fenBefore, uci: toUci(played), san: played.san, text: info.text, shapes: info.shapes, wait: info.wait });
+    }
+    pendingAsk = info.ask ? { question: info.ask, shapes: info.shapes } : null;
+  });
+
+  const first = new Chess(startFen);
+  const firstAsk = steps.find((s) => s.kind === 'ask') as Extract<Step, { kind: 'ask' }> | undefined;
+  const askColor = firstAsk ? new Chess(firstAsk.fenBefore).turn() : first.turn();
+  const orientation = (game.headers.Orientation?.toLowerCase() === 'black' || (!game.headers.Orientation && askColor === 'b'))
+    ? 'black' : 'white';
+
+  return {
+    title: game.headers.Event && game.headers.Event !== '?' ? game.headers.Event : 'Lección',
+    startFen,
+    intro: intro.text,
+    introShapes: intro.shapes,
+    steps,
+    maxScore,
+    orientation,
+  };
+}
+
+export function validateLessonPgn(pgn: string): string[] {
+  if (!pgn?.trim()) return ['Pega un PGN'];
+  try {
+    const l = compileLesson(pgn);
+    if (!l.steps.length) return ['El PGN no tiene jugadas'];
+    if (!l.steps.some((s) => s.kind === 'ask')) return ['Añade al menos una pregunta con {[%ask ¿...?]}'];
+    return [];
+  } catch (e) {
+    return [(e as Error).message];
+  }
+}

@@ -1,0 +1,30 @@
+---
+import StudentLayout from '../../layouts/StudentLayout.astro';
+import { STICKERS } from '../../lib/rewards';
+const s = Astro.locals.student!;
+const { results } = await Astro.locals.db.prepare('SELECT sticker_id FROM student_stickers WHERE student_id = ?').bind(s.id).all<{ sticker_id: string }>();
+const owned = new Set(results.map((r) => r.sticker_id));
+const rarityStyle: Record<string, string> = {
+  'común': 'from-sky-50 to-sky-100 border-sky-300',
+  'rara': 'from-emerald-50 to-emerald-100 border-emerald-400',
+  'épica': 'from-fuchsia-50 to-fuchsia-100 border-fuchsia-400',
+  'legendaria': 'from-amber-50 to-amber-200 border-amber-400',
+};
+---
+<StudentLayout title="Álbum · ChessKids">
+  <h1 class="ck-rise text-center font-display text-4xl font-extrabold text-violet-800">📒 Mi álbum de cromos</h1>
+  <p class="text-center font-bold text-slate-500">{owned.size} de {STICKERS.length} · ¡Consíguelos todos!</p>
+  <div class="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+    {STICKERS.map((st, i) => {
+      const has = owned.has(st.id);
+      return (
+        <div class={`ck-rise relative flex aspect-[3/4] flex-col items-center justify-center rounded-2xl border-4 bg-gradient-to-b p-2 text-center ${has ? rarityStyle[st.rarity] + ' shadow-[0_5px_0_rgb(0_0_0/0.1)]' : 'border-dashed border-slate-300 bg-slate-100'}`} style={`animation-delay:${i * 0.03}s`} title={st.hint}>
+          {has && st.rarity === 'legendaria' && <div class="ck-shine absolute inset-0 rounded-xl"></div>}
+          <span class={`text-5xl ${has ? '' : 'opacity-20 grayscale blur-[1px]'}`}>{has ? st.emoji : '❓'}</span>
+          <span class={`mt-1 text-xs font-extrabold leading-tight ${has ? 'text-slate-800' : 'text-slate-400'}`}>{has ? st.name : '???'}</span>
+          <span class="mt-0.5 text-[10px] leading-tight text-slate-500">{st.hint}</span>
+        </div>
+      );
+    })}
+  </div>
+</StudentLayout>

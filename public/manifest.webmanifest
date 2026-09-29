@@ -1,0 +1,9 @@
+{
+  "name": "ChessKids Academy",
+  "short_name": "ChessKids",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#f5f3ff",
+  "theme_color": "#7c3aed",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

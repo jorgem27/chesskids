@@ -1,0 +1,60 @@
+---
+import CoachLayout from '../../layouts/CoachLayout.astro';
+import { coachClasses, coachClubs } from '../../lib/db';
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const [clubs, classes] = await Promise.all([coachClubs(db, coach.id), coachClasses(db, coach.id)]);
+const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐', '🌈'];
+const colors: Record<string, string> = { violet: 'from-violet-500 to-fuchsia-500', sky: 'from-sky-400 to-blue-600', emerald: 'from-emerald-400 to-teal-600', amber: 'from-amber-400 to-orange-500', rose: 'from-rose-400 to-pink-600', orange: 'from-orange-400 to-red-500' };
+---
+<CoachLayout title="Mis clases">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl font-extrabold">¡Hola, {coach.name}! 👋</h1>
+      <p class="text-slate-500">Tus clases y las que otros profes han compartido contigo.</p>
+    </div>
+  </div>
+
+  <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {classes.map((c) => (
+      <a href={`/profe/clase/${c.id}`} class="group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-lg">
+        <div class={`bg-gradient-to-br ${colors[c.color] ?? colors.violet} p-5 text-white`}>
+          <div class="flex items-center justify-between">
+            <span class="text-5xl">{c.emoji}</span>
+            <span class="rounded-xl bg-white/25 px-3 py-1 font-mono text-lg font-black tracking-widest">{c.code}</span>
+          </div>
+          <h2 class="mt-2 font-display text-2xl font-extrabold">{c.name}</h2>
+          <p class="text-sm opacity-90">{c.club_name}</p>
+        </div>
+        <div class="flex items-center justify-between p-4 text-sm font-bold text-slate-600">
+          <span>👧 {c.student_count} alumnos</span>
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{c.is_owner ? 'Responsable' : 'Compartida'}</span>
+        </div>
+      </a>
+    ))}
+    {!classes.length && <p class="ck-card text-slate-500 sm:col-span-2">Aún no tienes clases. ¡Crea la primera! 👇</p>}
+  </div>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-2">
+    {clubs.length > 0 && (
+      <form data-api="/api/coach/classes" data-redirect="/profe/clase/:id" class="ck-card space-y-3">
+        <h2 class="font-display text-xl font-extrabold">➕ Nueva clase</h2>
+        <input name="name" required placeholder="Nombre (ej: Peques martes 17:00)" class="ck-input w-full" />
+        <div class="grid grid-cols-3 gap-2">
+          <select name="clubId" class="ck-input col-span-3 sm:col-span-1">{clubs.map((c) => <option value={c.id}>{c.name}</option>)}</select>
+          <select name="emoji" class="ck-input text-xl">{emojis.map((e) => <option>{e}</option>)}</select>
+          <select name="color" class="ck-input">{Object.keys(colors).map((c) => <option value={c}>{c}</option>)}</select>
+        </div>
+        <p data-error class="text-sm font-bold text-rose-600"></p>
+        <button type="submit" class="ck-btn ck-btn-primary">Crear clase</button>
+      </form>
+    )}
+    <form data-api="/api/coach/clubs" class="ck-card space-y-3">
+      <h2 class="font-display text-xl font-extrabold">🏛️ {clubs.length ? 'Otro club' : 'Crea tu club'}</h2>
+      <p class="text-sm text-slate-500">Tus clubs: {clubs.map((c) => c.name).join(', ') || 'ninguno todavía'}.</p>
+      <input name="name" required placeholder="Nombre del club" class="ck-input w-full" />
+      <p data-error class="text-sm font-bold text-rose-600"></p>
+      <button type="submit" class="ck-btn-sm">Crear club</button>
+    </form>
+  </div>
+</CoachLayout>
