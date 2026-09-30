@@ -21,7 +21,25 @@ export const AGE_GROUPS: Record<AgeGroup, { label: string; range: string; emoji:
   maestro: { label: 'Maestros', range: '12–15 años', emoji: '🎓' },
 };
 
-export const CLASS_COLORS = ['violet', 'sky', 'emerald', 'amber', 'rose', 'orange'] as const;
+/** Legacy named class colors (stored before the free color picker) mapped to hex. */
+const LEGACY_COLORS: Record<string, string> = { violet: '#8b5cf6', sky: '#0ea5e9', emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e', orange: '#f97316' };
+export const DEFAULT_CLASS_COLOR = LEGACY_COLORS.violet;
+export const CLASS_COLOR_PRESETS = Object.values(LEGACY_COLORS);
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** Returns a valid #rrggbb for a stored class color (hex or legacy name). */
+export function classColorHex(value: string | null | undefined): string {
+  const v = String(value ?? '').trim();
+  if (HEX.test(v)) return v.toLowerCase();
+  return LEGACY_COLORS[v] ?? DEFAULT_CLASS_COLOR;
+}
+
+/** Card gradient for a class color; darkened so white text stays readable. */
+export function classGradient(value: string | null | undefined): string {
+  const n = parseInt(classColorHex(value).slice(1), 16);
+  const shade = (f: number) => [n >> 16, (n >> 8) & 255, n & 255].map((c) => Math.round(c * f).toString(16).padStart(2, '0')).join('');
+  return `linear-gradient(135deg, #${shade(0.85)}, #${shade(0.6)})`;
+}
 
 /** Splits an emoji PIN string into its emojis (handles surrogate pairs). */
 export function splitPin(pin: string): string[] {

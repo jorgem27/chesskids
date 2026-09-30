@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { makeClassCode } from '../../../lib/catalog';
+import { classColorHex, makeClassCode } from '../../../lib/catalog';
 import { checkCoachPassword } from '../../../lib/auth';
 import { classPerm, isClubMember, json, readJson } from '../../../lib/db';
 
@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   let code = makeClassCode();
   while (await db.prepare('SELECT 1 FROM classes WHERE code = ?').bind(code).first()) code = makeClassCode();
   const cl = await db.prepare('INSERT INTO classes (club_id, name, code, emoji, color, created_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING id')
-    .bind(Number(b.clubId), name, code, b.emoji || '♞', b.color || 'violet', coach.id).first<{ id: number }>();
+    .bind(Number(b.clubId), name, code, b.emoji || '♞', classColorHex(b.color), coach.id).first<{ id: number }>();
   await db.prepare('INSERT INTO class_permissions (class_id, coach_id, is_owner, can_view_progress, can_create_content, can_manage_students) VALUES (?, ?, 1, 1, 1, 1)')
     .bind(cl!.id, coach.id).run();
   return json({ id: cl!.id, code });

@@ -1,11 +1,11 @@
 ---
 import CoachLayout from '../../layouts/CoachLayout.astro';
 import { coachClasses, coachClubs } from '../../lib/db';
+import { CLASS_COLOR_PRESETS, DEFAULT_CLASS_COLOR, classGradient } from '../../lib/catalog';
 const coach = Astro.locals.coach!;
 const db = Astro.locals.db;
 const [clubs, classes] = await Promise.all([coachClubs(db, coach.id), coachClasses(db, coach.id)]);
 const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐', '🌈'];
-const colors: Record<string, string> = { violet: 'from-violet-500 to-fuchsia-500', sky: 'from-sky-400 to-blue-600', emerald: 'from-emerald-400 to-teal-600', amber: 'from-amber-400 to-orange-500', rose: 'from-rose-400 to-pink-600', orange: 'from-orange-400 to-red-500' };
 ---
 <CoachLayout title="Mis clases">
   <div class="flex flex-wrap items-end justify-between gap-4">
@@ -18,7 +18,7 @@ const colors: Record<string, string> = { violet: 'from-violet-500 to-fuchsia-500
   <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {classes.map((c) => (
       <a href={`/profe/clase/${c.id}`} class="group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-lg">
-        <div class={`bg-gradient-to-br ${colors[c.color] ?? colors.violet} p-5 text-white`}>
+        <div class="p-5 text-white" style={`background:${classGradient(c.color)}`}>
           <div class="flex items-center justify-between">
             <span class="text-5xl">{c.emoji}</span>
             <span class="rounded-xl bg-white/25 px-3 py-1 font-mono text-lg font-black tracking-widest">{c.code}</span>
@@ -40,10 +40,18 @@ const colors: Record<string, string> = { violet: 'from-violet-500 to-fuchsia-500
       <form data-api="/api/coach/classes" data-redirect="/profe/clase/:id" class="ck-card space-y-3">
         <h2 class="font-display text-xl font-extrabold">➕ Nueva clase</h2>
         <input name="name" required placeholder="Nombre (ej: Peques martes 17:00)" class="ck-input w-full" />
-        <div class="grid grid-cols-3 gap-2">
-          <select name="clubId" class="ck-input col-span-3 sm:col-span-1">{clubs.map((c) => <option value={c.id}>{c.name}</option>)}</select>
+        <div class="grid grid-cols-2 gap-2">
+          <select name="clubId" class="ck-input col-span-2 sm:col-span-1">{clubs.map((c) => <option value={c.id}>{c.name}</option>)}</select>
           <select name="emoji" class="ck-input text-xl">{emojis.map((e) => <option>{e}</option>)}</select>
-          <select name="color" class="ck-input">{Object.keys(colors).map((c) => <option value={c}>{c}</option>)}</select>
+        </div>
+        <div>
+          <label for="class-color" class="text-sm font-bold text-slate-600">🎨 Color de la clase</label>
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <input id="class-color" type="color" name="color" value={DEFAULT_CLASS_COLOR} class="h-12 w-16 cursor-pointer rounded-xl border-2 border-slate-200 bg-white p-1" aria-label="Elegir color" />
+            {CLASS_COLOR_PRESETS.map((hex) => (
+              <button type="button" data-color={hex} style={`background:${hex}`} class="h-11 w-11 rounded-full ring-2 ring-white shadow" aria-label={`Color ${hex}`}></button>
+            ))}
+          </div>
         </div>
         <p data-error class="text-sm font-bold text-rose-600"></p>
         <button type="submit" class="ck-btn ck-btn-primary">Crear clase</button>
@@ -57,4 +65,11 @@ const colors: Record<string, string> = { violet: 'from-violet-500 to-fuchsia-500
       <button type="submit" class="ck-btn-sm">Crear club</button>
     </form>
   </div>
+  <script>
+    document.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const input = document.getElementById('class-color') as HTMLInputElement | null;
+        if (input) input.value = b.dataset.color!;
+      }));
+  </script>
 </CoachLayout>
