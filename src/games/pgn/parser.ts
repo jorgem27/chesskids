@@ -128,6 +128,8 @@ export interface CommentInfo {
   text: string;
   ask?: string;
   pts?: number;
+  retry: boolean;
+  hint?: string;
   wait: boolean;
   shapes: Shape[];
 }
@@ -138,14 +140,18 @@ const BRUSH: Record<string, string> = { G: 'green', R: 'red', Y: 'yellow', B: 'b
  * Tags supported inside PGN comments:
  *  [%ask ¿Pregunta?]   pause after this move and ask the student to play the next move
  *  [%pts 50]           points for this move when it is an answer (main answer defaults to 100)
+ *  [%retry]            on a variation: a "not the best" move — the student goes back to the same position, no mistake
+ *  [%hint texto]       on the question move: a hint shown after a wrong try
  *  [%wait]             pause here until the student taps "Continuar"
  *  [%cal Ge2e4,Rd1d8]  arrows (Lichess format)   [%csl Gd4,Re5]  circles (Lichess format)
  */
 export function parseComment(raw: string): CommentInfo {
-  const info: CommentInfo = { text: '', wait: false, shapes: [] };
+  const info: CommentInfo = { text: '', wait: false, retry: false, shapes: [] };
   let text = raw;
   text = text.replace(/\[%ask\s+([^\]]*)\]/gi, (_, q) => { info.ask = q.trim() || '¿Cuál es la mejor jugada?'; return ''; });
   text = text.replace(/\[%pts\s+(-?\d+)\s*\]/gi, (_, n) => { info.pts = Number(n); return ''; });
+  text = text.replace(/\[%retry\s*\]/gi, () => { info.retry = true; return ''; });
+  text = text.replace(/\[%hint\s+([^\]]*)\]/gi, (_, h) => { info.hint = h.trim(); return ''; });
   text = text.replace(/\[%wait\s*\]/gi, () => { info.wait = true; return ''; });
   text = text.replace(/\[%cal\s+([^\]]*)\]/gi, (_, list: string) => {
     for (const a of list.split(',').map((x) => x.trim())) {

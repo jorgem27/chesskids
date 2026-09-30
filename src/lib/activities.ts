@@ -1,6 +1,6 @@
 import { getMeta } from '../games/meta';
 
-export interface ActivityBody { clubId: number; type: string; title: string; description?: string; xpReward?: number; content: unknown }
+export interface ActivityBody { clubId: number; type: string; title: string; description?: string; xpReward?: number; content: unknown; visibility?: 'public' | 'private' }
 
 export function checkActivity(b: ActivityBody): string[] {
   let meta;

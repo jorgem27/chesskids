@@ -7,6 +7,7 @@ import { sfx, vibrate } from '../../lib/sfx';
 import { Board, isPromotion, syncBoard } from '../chess/Board';
 import type { LessonContent } from '../meta';
 import { applyUci } from '../puzzle/logic';
+import { ALMOST_TEXT } from '../rules';
 import type { PlayerProps } from '../types';
 import { compileLesson, type Step } from './lesson';
 import type { Shape } from './parser';
@@ -15,7 +16,7 @@ const toCg = (shapes: Shape[]): DrawShape[] =>
   shapes.map((s) => ({ orig: s.orig as Key, dest: s.dest as Key | undefined, brush: s.brush }));
 
 export function LessonPlayer({ content, api }: PlayerProps<LessonContent>) {
-  const lesson = useMemo(() => compileLesson(content.pgn), [content.pgn]);
+  const lesson = useMemo(() => compileLesson(content.pgn, content.questions), [content.pgn, content.questions]);
   const cg = useRef<Api | null>(null);
   const chess = useRef(new Chess(lesson.startFen));
   const st = useRef({ i: 0, tries: 0, score: 0, correct: 0, mistakes: 0, waiting: null as null | (() => void), asking: false });
@@ -118,6 +119,16 @@ export function LessonPlayer({ content, api }: PlayerProps<LessonContent>) {
       afterAnswer(step, earned, ans.uci);
       return;
     }
+    // "Not the best": back to the same position, no mistake, no penalty.
+    const almost = step.almost.find((w) => w.uci.slice(0, 4) === uci.slice(0, 4));
+    if (almost) {
+      setTimeout(() => {
+        syncBoard(cg.current!, chess.current, { movable: chess.current.turn() === 'w' ? 'white' : 'black' });
+        api.say(almost.text || ALMOST_TEXT);
+        sfx.hint();
+      }, 350);
+      return;
+    }
     // Wrong
     s.tries++;
     s.mistakes++;
@@ -135,7 +146,7 @@ export function LessonPlayer({ content, api }: PlayerProps<LessonContent>) {
         playMove(step.main.uci, () => afterAnswer(step, 0, step.main.uci), 1500);
         return;
       }
-      api.bad(known?.text || (s.tries === 1 ? 'Mmm… piensa otra vez 🤔' : 'Pista: mira la pieza del círculo ✨'));
+      api.bad(known?.text || (step.hint ? `Pista: ${step.hint}` : s.tries === 1 ? 'Mmm… piensa otra vez 🤔' : 'Pista: mira la pieza del círculo ✨'));
       if (s.tries >= 2) { cg.current!.setAutoShapes([{ orig: from, brush: 'yellow' }]); sfx.hint(); }
     }, 350);
   }

@@ -4,6 +4,8 @@
 //   1. Add its metadata (name, emoji, validate, defaultContent…) in games/meta.ts
 //   2. Create a Player component (receives `content` + `api`) and an Editor component
 //   3. Register both below. The dashboard, coach panel, homework and rewards work automatically.
+import { BotEditor } from './bot/BotEditor';
+import { BotPlayer } from './bot/BotPlayer';
 import { FruitEditor } from './fruit/FruitEditor';
 import { FruitPlayer } from './fruit/FruitPlayer';
 import { GAME_META, type GameMeta } from './meta';
@@ -20,6 +22,7 @@ const UI: Record<string, GameUi> = {
   'puzzle-hint': { Player: makePuzzlePlayer('hint'), Editor: PuzzleEditor },
   'puzzle-blitz': { Player: makePuzzlePlayer('blitz'), Editor: PuzzleEditor },
   'pgn-lesson': { Player: LessonPlayer, Editor: LessonEditor },
+  'play-bot': { Player: BotPlayer, Editor: BotEditor },
   'fruit-collector': { Player: FruitPlayer, Editor: FruitEditor },
 };
 

@@ -1,7 +1,7 @@
 ---
 import Base from '../../../../layouts/Base.astro';
 import Projector from '../../../../components/projector/Projector';
-import { classPerm, type ClassRow } from '../../../../lib/db';
+import { classPerm, VISIBLE_ACTIVITY_SQL, type ClassRow } from '../../../../lib/db';
 const coach = Astro.locals.coach!;
 const db = Astro.locals.db;
 const id = Number(Astro.params.id);
@@ -10,8 +10,8 @@ if (!perm) return Astro.redirect('/profe');
 const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(id).first<ClassRow>())!;
 const { results: students } = await db.prepare('SELECT id, display_name AS name, avatar FROM students WHERE class_id = ? AND archived = 0').bind(id).all<any>();
 const { results: acts } = await db.prepare(
-  `SELECT id, title, type, content_json FROM activities WHERE club_id = ? AND type IN ('puzzle-hint', 'puzzle-blitz') ORDER BY updated_at DESC`,
-).bind(cls.club_id).all<any>();
+  `SELECT a.id, a.title, a.type, a.content_json FROM activities a WHERE a.club_id = ? AND ${VISIBLE_ACTIVITY_SQL} AND a.type IN ('puzzle-hint', 'puzzle-blitz') ORDER BY a.updated_at DESC`,
+).bind(cls.club_id, Astro.locals.coach!.id).all<any>();
 const sources = acts.map((a) => ({ id: a.id, title: a.title, type: a.type, puzzles: JSON.parse(a.content_json).puzzles ?? [] })).filter((s) => s.puzzles.length);
 ---
 <Base title={`Proyector · ${cls.name}`}>

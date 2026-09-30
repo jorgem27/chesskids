@@ -7,8 +7,9 @@ const coach = Astro.locals.coach!;
 const type = Astro.url.searchParams.get('tipo') ?? '';
 const clubId = Number(Astro.url.searchParams.get('club'));
 const meta = GAME_META[type];
-if (!meta || !(await isClubMember(Astro.locals.db, coach.id, clubId))) return Astro.redirect('/profe/actividades');
+const role = meta ? await isClubMember(Astro.locals.db, coach.id, clubId) : null;
+if (!meta || !role) return Astro.redirect('/profe/actividades');
 ---
 <CoachLayout title={`Nueva · ${meta.name}`}>
-  <ActivityEditor client:only="preact" clubId={clubId} type={type} initial={{ title: '', description: '', xpReward: meta.defaultXp, content: meta.defaultContent() }} />
+  <ActivityEditor client:only="preact" clubId={clubId} type={type} isAdmin={role === 'admin'} visibility="private" initial={{ title: '', description: '', xpReward: meta.defaultXp, content: meta.defaultContent() }} />
 </CoachLayout>

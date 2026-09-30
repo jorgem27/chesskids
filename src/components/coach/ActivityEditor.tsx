@@ -6,10 +6,15 @@ interface Props {
   id?: number;
   clubId: number;
   type: string;
+  visibility?: 'public' | 'private';
+  /** Club admin: may create/edit public activities. */
+  isAdmin?: boolean;
+  /** Editing a public activity without being admin: saving creates a private copy. */
+  willFork?: boolean;
   initial: { title: string; description: string; xpReward: number; content: any };
 }
 
-export default function ActivityEditor({ id, clubId, type, initial }: Props) {
+export default function ActivityEditor({ id, clubId, type, visibility = 'private', isAdmin = false, willFork = false, initial }: Props) {
   const game = getGame(type);
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
@@ -18,6 +23,7 @@ export default function ActivityEditor({ id, clubId, type, initial }: Props) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [preview, setPreview] = useState(false);
+  const [vis, setVis] = useState<'public' | 'private'>(visibility);
   const errors = game.validate(content);
   const Editor = game.Editor;
 
@@ -26,12 +32,13 @@ export default function ActivityEditor({ id, clubId, type, initial }: Props) {
     const res = await fetch(id ? `/api/coach/activities/${id}` : '/api/coach/activities', {
       method: id ? 'PUT' : 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clubId, type, title, description, xpReward: xp, content }),
+      body: JSON.stringify({ clubId, type, title, description, xpReward: xp, content, visibility: vis }),
     });
     const body = await (res.json() as Promise<any>).catch(() => ({}));
     setSaving(false);
     if (!res.ok) return setMsg({ ok: false, text: body.error ?? 'Error' });
     if (!id) { location.href = `/profe/actividades/${body.id}?guardada=1`; return; }
+    if (body.forked) { location.href = `/profe/actividades/${body.id}?copia=1`; return; }
     setMsg({ ok: true, text: '✅ Guardada' });
   }
 
@@ -55,13 +62,23 @@ export default function ActivityEditor({ id, clubId, type, initial }: Props) {
       <div class="flex flex-wrap items-center gap-3">
         <a href="/profe/actividades" class="ck-btn-sm">←</a>
         <span class={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${game.gradient} text-2xl`}>{game.emoji}</span>
-        <h1 class="flex-1 font-display text-2xl font-extrabold">{id ? 'Editar' : 'Nueva'}: {game.name}</h1>
+        <h1 class="flex-1 font-display text-2xl font-extrabold">{id ? 'Editar' : 'Nueva'}: {game.name} <span class={`ml-2 align-middle rounded-full px-3 py-1 text-xs font-bold ${vis === 'public' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'}`}>{vis === 'public' ? '🌍 Pública' : '🔒 Privada'}</span></h1>
         <button class="ck-btn-sm" disabled={errors.length > 0} onClick={() => setPreview(true)}>▶ Probar</button>
-        {id && <button class="ck-btn-sm text-rose-600" onClick={remove}>🗑 Borrar</button>}
-        <button class="ck-btn ck-btn-primary" disabled={saving || errors.length > 0 || !title.trim()} onClick={save}>{saving ? 'Guardando…' : '💾 Guardar'}</button>
+        {id && !willFork && <button class="ck-btn-sm text-rose-600" onClick={remove}>🗑 Borrar</button>}
+        <button class="ck-btn ck-btn-primary" disabled={saving || errors.length > 0 || !title.trim()} onClick={save}>{saving ? 'Guardando…' : willFork ? '💾 Guardar mi copia' : '💾 Guardar'}</button>
       </div>
       {msg && <p class={`rounded-xl p-3 font-bold ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{msg.text}</p>}
+      {willFork && <p class="rounded-xl bg-sky-50 p-3 font-bold text-sky-800">🌍 Esta actividad es pública. Cámbiale lo que quieras: al guardar se crea <u>tu copia privada</u> y la original no se toca.</p>}
+      {typeof location !== 'undefined' && location.search.includes('copia=1') && !msg && <p class="rounded-xl bg-emerald-50 p-3 font-bold text-emerald-700">✅ Tu copia privada está lista. Solo tú la ves y la puedes asignar como deberes.</p>}
       {typeof location !== 'undefined' && location.search.includes('guardada=1') && !msg && <p class="rounded-xl bg-emerald-50 p-3 font-bold text-emerald-700">✅ Actividad creada. Ya puedes asignarla como deberes desde tu clase.</p>}
+
+      {isAdmin && !id && (
+        <div class="ck-card flex flex-wrap items-center gap-3">
+          <span class="font-bold">¿Quién la ve?</span>
+          <button type="button" onClick={() => setVis('private')} class={`rounded-full px-4 py-2 font-bold ${vis === 'private' ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>🔒 Privada (solo yo)</button>
+          <button type="button" onClick={() => setVis('public')} class={`rounded-full px-4 py-2 font-bold ${vis === 'public' ? 'bg-sky-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>🌍 Pública (todo el club)</button>
+        </div>
+      )}
 
       <div class="ck-card grid gap-3 md:grid-cols-[2fr_3fr_1fr]">
         <label class="font-bold">Título

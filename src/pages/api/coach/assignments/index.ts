@@ -15,7 +15,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   const dueOn = b.dueOn && DATE.test(b.dueOn) ? b.dueOn : null;
   const stmts = [];
   for (const id of ids) {
-    const ok = await db.prepare('SELECT 1 FROM activities WHERE id = ? AND club_id = ?').bind(id, cls!.club_id).first();
+    const ok = await db.prepare("SELECT 1 FROM activities WHERE id = ? AND club_id = ? AND (visibility = 'public' OR created_by = ?)").bind(id, cls!.club_id, locals.coach!.id).first();
     // Skip if this activity is already an active mission in the class
     const dup = await db.prepare('SELECT 1 FROM assignments WHERE class_id = ? AND activity_id = ? AND (due_on IS NULL OR due_on >= ?)')
       .bind(Number(b.classId), id, today()).first();

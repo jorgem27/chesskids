@@ -4,11 +4,12 @@ import { Chess } from 'chess.js';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Board, isPromotion, syncBoard } from '../chess/Board';
 import type { EditorProps } from '../types';
-import { applyUci, validatePuzzleSet, type Puzzle, type PuzzleSetContent } from './logic';
+import { RulesEditor } from '../RulesEditor';
+import { applyUci, DEFAULT_PTS, studentMoveCount, validatePuzzleSet, type Puzzle, type PuzzleSetContent, type PuzzleStep } from './logic';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-function PuzzleRecorder({ puzzle, onChange }: { puzzle: Puzzle; onChange: (p: Puzzle) => void }) {
+function PuzzleRecorder({ puzzle, onChange, blitz }: { puzzle: Puzzle; onChange: (p: Puzzle) => void; blitz: boolean }) {
   const cg = useRef<Api | null>(null);
   const ref = useRef(puzzle);
   ref.current = puzzle;
@@ -38,14 +39,37 @@ function PuzzleRecorder({ puzzle, onChange }: { puzzle: Puzzle; onChange: (p: Pu
     const c = position(p);
     let uci = orig + dest;
     if (isPromotion(c, orig, dest)) uci += 'q';
-    onChange({ ...p, moves: [...p.moves, uci] });
+    setMoves([...p.moves, uci]);
   }
+
+  /** Changing the recorded line also trims the per-move settings that no longer exist. */
+  function setMoves(moves: string[]) {
+    const p = ref.current;
+    onChange({ ...p, moves, steps: p.steps?.slice(0, Math.ceil(moves.length / 2)) });
+  }
+
+  function patchStep(k: number, patch: Partial<PuzzleStep>) {
+    const p = ref.current;
+    const steps = Array.from({ length: studentMoveCount(p) }, (_, i) => p.steps?.[i] ?? {});
+    steps[k] = { ...steps[k], ...patch };
+    onChange({ ...p, steps });
+  }
+
+  // Position before each student move (for the "other moves" boards).
+  const stepFens = (() => {
+    try {
+      const c = new Chess(puzzle.fen);
+      const out: string[] = [];
+      puzzle.moves.forEach((m, i) => { if (i % 2 === 0) out.push(c.fen()); applyUci(c, m); });
+      return out;
+    } catch { return []; }
+  })();
 
   function applyFen(f: string) {
     try {
       new Chess(f.trim());
       setFenError('');
-      onChange({ ...ref.current, fen: f.trim(), moves: [] });
+      onChange({ ...ref.current, fen: f.trim(), moves: [], steps: [] });
     } catch {
       setFenError('FEN no válido');
     }
@@ -83,11 +107,43 @@ function PuzzleRecorder({ puzzle, onChange }: { puzzle: Puzzle; onChange: (p: Pu
             {sans.length ? sans.map((s, i) => <span key={i} class={i % 2 === 0 ? 'font-bold text-violet-700' : 'text-slate-500'}>{s} </span>) : <span class="text-slate-400">— sin jugadas —</span>}
           </p>
           <div class="mt-2 flex gap-2">
-            <button type="button" class="ck-btn-sm" disabled={!puzzle.moves.length} onClick={() => onChange({ ...ref.current, moves: ref.current.moves.slice(0, -1) })}>↶ Deshacer</button>
-            <button type="button" class="ck-btn-sm" disabled={!puzzle.moves.length} onClick={() => onChange({ ...ref.current, moves: [] })}>Borrar</button>
+            <button type="button" class="ck-btn-sm" disabled={!puzzle.moves.length} onClick={() => setMoves(ref.current.moves.slice(0, -1))}>↶ Deshacer</button>
+            <button type="button" class="ck-btn-sm" disabled={!puzzle.moves.length} onClick={() => setMoves([])}>Borrar</button>
           </div>
         </div>
       </div>
+      {puzzle.moves.length > 0 && (
+        <div class="space-y-3 md:col-span-2">
+          <p class="font-black">🎯 Ajustes de cada jugada del alumno</p>
+          {Array.from({ length: studentMoveCount(puzzle) }, (_, k) => {
+            const cfg = puzzle.steps?.[k] ?? {};
+            const best = puzzle.moves[2 * k];
+            const fenBefore = stepFens[k];
+            return (
+              <div key={`${k}-${best}`} class="space-y-2 rounded-2xl bg-slate-50 p-3 text-sm">
+                <div class="flex flex-wrap items-center gap-3">
+                  <b class="rounded-full bg-violet-600 px-3 py-1 text-white">Jugada {k + 1}: {sans[2 * k]}</b>
+                  <label class="flex items-center gap-1 font-bold">⭐ Puntos
+                    <input type="number" min={0} max={1000} class="ck-input w-20 !py-1" value={cfg.pts ?? DEFAULT_PTS[blitz ? 'blitz' : 'hint']}
+                      onInput={(e) => patchStep(k, { pts: Math.max(0, Number((e.target as HTMLInputElement).value) || 0) })} />
+                  </label>
+                  {!blitz && (
+                    <label class="flex min-w-56 flex-1 items-center gap-1 font-bold">💡 Pista
+                      <input class="ck-input flex-1 !py-1 font-normal" placeholder="Ej: ¡Mira la última fila!" value={cfg.hint ?? ''}
+                        onInput={(e) => patchStep(k, { hint: (e.target as HTMLInputElement).value })} />
+                    </label>
+                  )}
+                </div>
+                <p class="font-bold">Otras jugadas</p>
+                {fenBefore && (
+                  <RulesEditor key={`${fenBefore}|${best}`} fen={fenBefore} bestUci={best} defaultPts={cfg.pts ?? DEFAULT_PTS[blitz ? 'blitz' : 'hint']}
+                    rules={cfg.rules ?? []} onChange={(rules) => patchStep(k, { rules })} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -163,7 +219,7 @@ export function PuzzleEditor({ value, onChange }: EditorProps<PuzzleSetContent>)
         </div>
       )}
       {puzzles[sel] ? (
-        <PuzzleRecorder key={sel} puzzle={puzzles[sel]} onChange={(p) => update(sel, p)} />
+        <PuzzleRecorder key={sel} blitz={isBlitz} puzzle={puzzles[sel]} onChange={(p) => update(sel, p)} />
       ) : (
         <p class="rounded-2xl bg-slate-50 p-6 text-center text-slate-500">Pulsa «＋ Problema» para empezar.</p>
       )}

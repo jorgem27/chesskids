@@ -13,6 +13,10 @@ It's designed for two screens:
 
 You need **Node.js 22+** (https://nodejs.org). Open a terminal in this folder and run:
 
+### Windows 1-Click Launch:
+Double-click `start.bat` (or run `.\start.bat`). It will verify dependencies, apply local database migrations, and launch both the frontend and backend on **http://localhost:4321** while opening your browser automatically.
+
+### Terminal (Windows, Mac, Linux):
 ```bash
 npm install
 npm run setup      # creates the local database and loads the demo data
@@ -20,6 +24,10 @@ npm run dev
 ```
 
 Then open **http://localhost:4321**.
+
+### 🚀 Pushing Changes and Database:
+- **Windows script**: Double-click `push.bat` (or run `.\push.bat "Your commit message"`). It will commit and push all code changes to `main`, apply database migrations to remote Cloudflare D1 (`npm run db:migrate:remote`), and optionally deploy the site.
+- **npm shortcut**: Run `npm run push` (or `npm run push:deploy`).
 
 ### Demo accounts
 
@@ -54,6 +62,7 @@ The coach can reset passwords/drawings or **create a new link**. That revokes th
 | ⚡ `puzzle-blitz` Lightning challenge | Wrong move → shows the solution and moves on. Combos 🔥 and an optional clock per puzzle. |
 | 📖 `pgn-lesson` Interactive lesson | The game plays itself and pauses on `[%ask]` questions. Accepts alternatives with points (`[%pts 50]`), gives feedback on typical mistakes, and draws arrows/circles in Lichess format (`[%cal]`, `[%csl]`). |
 | 🍓 `fruit-collector` Fruit collector | Move a piece to collect all the fruit. An exact solver (BFS + bitmask DP) works out the shortest path and awards 3⭐ if you match it. Supports 🪨 rocks. |
+| 🤖 `play-bot` Play vs bot | The student plays from a position the coach sets up (e.g. K+R vs K) against Stockfish (lite WASM, runs in a Web Worker from `public/engine`, GPLv3). Optional notebook explanation with a demo board. Stalemate/checkmate/move limit handled; stars by number of moves. |
 
 **Creating content is easy:** puzzles are recorded by playing the solution on the board (or imported in bulk from FEN/Lichess CSV). Lessons are a PGN that can be exported from a Lichess study. Fruit levels are painted by tapping squares.
 

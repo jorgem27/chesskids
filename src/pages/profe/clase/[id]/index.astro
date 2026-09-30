@@ -3,7 +3,7 @@ import CoachLayout from '../../../../layouts/CoachLayout.astro';
 import StudentManager from '../../../../components/coach/StudentManager';
 import AssignPanel from '../../../../components/coach/AssignPanel';
 import { GAME_META } from '../../../../games/meta';
-import { classPerm, today, type ClassRow } from '../../../../lib/db';
+import { classPerm, today, VISIBLE_ACTIVITY_SQL, type ClassRow } from '../../../../lib/db';
 import { addDays, relativeDay } from '../../../../lib/dates';
 import { levelFromXp } from '../../../../lib/rewards';
 
@@ -36,8 +36,8 @@ const { results: assignments } = await db.prepare(
 
 let library: any[] = [];
 if (tab === 'deberes') {
-  const { results } = await db.prepare('SELECT id, type, title, content_json FROM activities WHERE club_id = ? ORDER BY updated_at DESC').bind(cls.club_id).all<any>();
-  library = results.map((r) => ({ id: r.id, type: r.type, title: r.title, count: (() => { try { return GAME_META[r.type]?.count(JSON.parse(r.content_json)) ?? 0; } catch { return 0; } })() }));
+  const { results } = await db.prepare("SELECT a.id, a.type, a.title, a.content_json, a.visibility FROM activities a WHERE a.club_id = ? AND " + VISIBLE_ACTIVITY_SQL + " ORDER BY a.updated_at DESC").bind(cls.club_id, coach.id).all<any>();
+  library = results.map((r) => ({ id: r.id, type: r.type, title: r.title, visibility: r.visibility, count: (() => { try { return GAME_META[r.type]?.count(JSON.parse(r.content_json)) ?? 0; } catch { return 0; } })() }));
 }
 
 // Progress grid: best stars per student per assignment (last 12 assignments)

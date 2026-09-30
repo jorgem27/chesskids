@@ -13,6 +13,7 @@ export interface ClassRow { id: number; club_id: number; name: string; code: str
 export interface ActivityRow {
   id: number; club_id: number; type: string; title: string; description: string;
   content_json: string; xp_reward: number; created_by: number | null; updated_at: number;
+  visibility: 'public' | 'private'; source_id: number | null;
 }
 
 export interface Perm {
@@ -54,11 +55,42 @@ export async function coachClasses(db: D1Database, coachId: number) {
   return results;
 }
 
-/** Coach can edit an activity if they belong to its club. */
-export async function canEditActivity(db: D1Database, coachId: number, activityId: number) {
+/** SQL fragment (table alias `a`, one `?` = coach id): activities a coach can see in the library. */
+export const VISIBLE_ACTIVITY_SQL = "(a.visibility = 'public' OR a.created_by = ?)";
+
+/**
+ * What a coach may do with an activity:
+ *  - public : any club member can view/use it; only club admins edit it directly (others fork it).
+ *  - private: only its creator can view, use and edit it.
+ */
+export async function activityAccess(db: D1Database, coachId: number, activityId: number) {
   const a = await db.prepare('SELECT * FROM activities WHERE id = ?').bind(activityId).first<ActivityRow>();
   if (!a) return null;
-  return (await isClubMember(db, coachId, a.club_id)) ? a : null;
+  const role = await isClubMember(db, coachId, a.club_id);
+  if (!role) return null;
+  if (a.visibility === 'private') {
+    return a.created_by === coachId ? { activity: a, canEdit: true, needsFork: false } : null;
+  }
+  const admin = role === 'admin';
+  return { activity: a, canEdit: true, needsFork: !admin };
+}
+
+/** Coach can open (view / try / edit-or-fork) an activity. */
+export async function canEditActivity(db: D1Database, coachId: number, activityId: number) {
+  return (await activityAccess(db, coachId, activityId))?.activity ?? null;
+}
+
+/** Copies an activity as a PRIVATE activity of `coachId`. */
+export async function forkActivity(
+  db: D1Database, coachId: number, src: ActivityRow,
+  over: { title: string; description: string; content: unknown; xpReward: number },
+): Promise<number> {
+  const row = await db.prepare(
+    `INSERT INTO activities (club_id, created_by, type, title, description, content_json, xp_reward, visibility, source_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'private', ?) RETURNING id`,
+  ).bind(src.club_id, coachId, src.type, over.title, over.description, JSON.stringify(over.content), over.xpReward, src.source_id ?? src.id)
+    .first<{ id: number }>();
+  return row!.id;
 }
 
 export async function studentStats(db: D1Database, s: StudentRow): Promise<Stats> {

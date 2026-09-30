@@ -13,7 +13,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply chesskids --remote",
     "setup": "npm run db:migrate && npm run db:seed",
     "deploy": "astro build && wrangler deploy",
-    "db:seed": "wrangler d1 execute chesskids --local --file=seed/demo.sql"
+    "db:seed": "wrangler d1 execute chesskids --local --file=seed/demo.sql",
+    "push": "git add -A && git commit -m \"Update\" && git push origin main && npm run db:migrate:remote",
+    "push:deploy": "npm run push && npm run deploy"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",

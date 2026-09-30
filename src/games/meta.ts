@@ -1,7 +1,8 @@
 // Server-safe metadata for every game type (no UI imports here).
 // To add a new game type: add its meta here + its Player/Editor in registry.ts. That's it.
+import { newPosition, validateBotSet, type BotContent } from './bot/logic';
 import { validateLevel, type FruitLevel } from './fruit/logic';
-import { validateLessonPgn } from './pgn/lesson';
+import { validateLessonPgn, type QuestionOverrides } from './pgn/lesson';
 import { validatePuzzleSet, type PuzzleSetContent } from './puzzle/logic';
 
 export interface GameMeta<C = any> {
@@ -20,8 +21,9 @@ export interface GameMeta<C = any> {
   countLabel: string;
 }
 
+export type { BotContent };
 export interface FruitContent { levels: FruitLevel[] }
-export interface LessonContent { pgn: string }
+export interface LessonContent { pgn: string; questions?: QuestionOverrides }
 export interface PdfContent { url: string }
 
 const SAMPLE_LESSON = `[Event "Mate del pastor"]
@@ -84,9 +86,22 @@ export const GAME_META: Record<string, GameMeta> = {
     help: 'La partida se reproduce sola y se para en las preguntas ([%ask]). Acepta jugadas alternativas con puntos ([%pts]).',
     defaultXp: 40,
     defaultContent: (): LessonContent => ({ pgn: SAMPLE_LESSON }),
-    validate: (c: LessonContent) => validateLessonPgn(c?.pgn),
+    validate: (c: LessonContent) => validateLessonPgn(c?.pgn, c?.questions),
     count: (c: LessonContent) => (c?.pgn?.match(/\[%ask/gi) ?? []).length,
     countLabel: 'preguntas',
+  },
+  'play-bot': {
+    id: 'play-bot',
+    name: 'Juega contra el bot',
+    emoji: '🤖',
+    gradient: 'from-cyan-400 to-indigo-500',
+    tagline: '¡Reta al robot y dale jaque mate!',
+    help: 'El alumno juega contra Stockfish desde la posición que tú coloques (ideal para finales como rey y torre contra rey). Puedes añadir una explicación con tablero y cuaderno de pasos.',
+    defaultXp: 35,
+    defaultContent: (): BotContent => ({ positions: [newPosition()] }),
+    validate: validateBotSet,
+    count: (c: BotContent) => c.positions?.length ?? 0,
+    countLabel: 'posiciones',
   },
   'fruit-collector': {
     id: 'fruit-collector',

@@ -3,7 +3,7 @@ import { GAME_META } from '../../games/meta';
 import { dueLabel, shortDate } from '../../lib/dates';
 import { copy, whatsappUrl } from '../ui/QR';
 
-export interface LibItem { id: number; type: string; title: string; count: number }
+export interface LibItem { id: number; type: string; title: string; count: number; visibility?: string }
 export interface AsgItem { id: number; activity_id: number; type: string; title: string; starts_on: string; due_on: string | null; note: string; done_count: number; avg_stars: number | null }
 interface Props {
   classId: number; className: string; classCode: string; origin: string; canCreate: boolean;
@@ -94,7 +94,7 @@ export default function AssignPanel({ classId, className, classCode, origin, can
                 <label key={l.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 ${on ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
                   <input type="checkbox" checked={on} onChange={() => setSel(on ? sel.filter((x) => x !== l.id) : [...sel, l.id])} />
                   <span class="text-2xl">{meta?.emoji}</span>
-                  <span class="min-w-0 flex-1"><b class="block truncate">{l.title}</b><span class="text-xs text-slate-500">{meta?.name} · {l.count} {meta?.countLabel}</span></span>
+                  <span class="min-w-0 flex-1"><b class="block truncate">{l.visibility === 'private' ? '🔒 ' : ''}{l.title}</b><span class="text-xs text-slate-500">{meta?.name} · {l.count} {meta?.countLabel}</span></span>
                 </label>
               );
             })}

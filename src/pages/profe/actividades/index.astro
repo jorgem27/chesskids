@@ -1,27 +1,31 @@
 ---
 import CoachLayout from '../../../layouts/CoachLayout.astro';
 import { GAME_META, GAME_TYPES } from '../../../games/meta';
-import { coachClubs } from '../../../lib/db';
+import { coachClubs, VISIBLE_ACTIVITY_SQL } from '../../../lib/db';
 const coach = Astro.locals.coach!;
 const db = Astro.locals.db;
 const clubs = await coachClubs(db, coach.id);
 const clubId = Number(Astro.url.searchParams.get('club')) || clubs[0]?.id;
 const filter = Astro.url.searchParams.get('tipo');
+const isAdmin = clubs.find((c) => c.id === clubId)?.role === 'admin';
 const { results } = clubId
   ? await db.prepare(
-      `SELECT a.id, a.type, a.title, a.description, a.content_json, a.xp_reward, a.updated_at, c.name AS author,
+      `SELECT a.id, a.type, a.title, a.description, a.content_json, a.xp_reward, a.updated_at, a.visibility, a.source_id, c.name AS author,
+        (SELECT title FROM activities s WHERE s.id = a.source_id) AS source_title,
         (SELECT COUNT(*) FROM assignments x WHERE x.activity_id = a.id) AS uses
-       FROM activities a LEFT JOIN coaches c ON c.id = a.created_by WHERE a.club_id = ? ORDER BY a.updated_at DESC`,
-    ).bind(clubId).all<any>()
+       FROM activities a LEFT JOIN coaches c ON c.id = a.created_by WHERE a.club_id = ? AND ${VISIBLE_ACTIVITY_SQL} ORDER BY a.updated_at DESC`,
+    ).bind(clubId, coach.id).all<any>()
   : { results: [] as any[] };
 const items = results.filter((r) => !filter || r.type === filter);
+const publicItems = items.filter((r) => r.visibility === 'public');
+const mine = items.filter((r) => r.visibility === 'private');
 const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.content_json)) ?? 0; } catch { return 0; } };
 ---
 <CoachLayout title="Actividades">
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="font-display text-3xl font-extrabold">🧩 Biblioteca de actividades</h1>
-      <p class="text-slate-500">Se comparten entre todas las clases del club.</p>
+      <p class="text-slate-500">Las públicas son de todo el club. Si editas una pública, se crea tu copia privada: solo tú la ves.</p>
     </div>
     {clubs.length > 1 && (
       <form class="flex gap-2"><select name="club" class="ck-input" onchange="this.form.submit()">{clubs.map((c) => <option value={c.id} selected={c.id === clubId}>{c.name}</option>)}</select></form>
@@ -30,7 +34,7 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
 
   {!clubId ? <p class="ck-card mt-6">Primero crea un club en <a href="/profe" class="font-bold text-violet-600">Mis clases</a>.</p> : (
     <>
-      <h2 class="mt-6 font-display text-xl font-extrabold">Crear nueva</h2>
+      <h2 class="mt-6 font-display text-xl font-extrabold">Crear nueva{isAdmin ? '' : ' (privada)'}</h2>
       <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {GAME_TYPES.map((t) => {
           const m = GAME_META[t];
@@ -45,24 +49,36 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
       </div>
 
       <div class="mt-8 flex flex-wrap items-center gap-2">
-        <h2 class="mr-2 font-display text-xl font-extrabold">Tus actividades ({items.length})</h2>
+        <h2 class="mr-2 font-display text-xl font-extrabold">Filtrar</h2>
         <a href={`?club=${clubId}`} class={`rounded-full px-3 py-1 text-sm font-bold ${!filter ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>Todas</a>
         {GAME_TYPES.map((t) => <a href={`?club=${clubId}&tipo=${t}`} class={`rounded-full px-3 py-1 text-sm font-bold ${filter === t ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>{GAME_META[t].emoji} {GAME_META[t].name}</a>)}
       </div>
-      <div class="mt-3 grid gap-3 md:grid-cols-2">
-        {items.map((r) => (
-          <div class="ck-card flex items-center gap-4 !p-4">
-            <span class={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${GAME_META[r.type]?.gradient} text-3xl`}>{GAME_META[r.type]?.emoji}</span>
-            <div class="min-w-0 flex-1">
-              <p class="truncate font-bold">{r.title}</p>
-              <p class="text-xs text-slate-500">{count(r)} {GAME_META[r.type]?.countLabel} · {r.xp_reward} XP · usada {r.uses}× · {r.author ?? '—'}</p>
-            </div>
-            <a href={`/profe/actividades/${r.id}/probar`} class="ck-btn-sm" title="Probar">▶</a>
-            <a href={`/profe/actividades/${r.id}`} class="ck-btn-sm" title="Editar">✏️</a>
+      {[
+        { key: 'mine', title: '🔒 Mis actividades privadas', hint: 'Solo las ves tú. Aquí aparecen tus copias de las públicas.', list: mine },
+        { key: 'public', title: '🌍 Actividades públicas del club', hint: isAdmin ? 'Eres admin: lo que edites aquí lo verán todos los profes.' : 'Puedes usarlas tal cual o pulsar ✏️ para crear tu propia copia editable.', list: publicItems },
+      ].map((sec) => (
+        <>
+          <div class="mt-8">
+            <h2 class="font-display text-xl font-extrabold">{sec.title} ({sec.list.length})</h2>
+            <p class="text-sm text-slate-500">{sec.hint}</p>
           </div>
-        ))}
-        {!items.length && <p class="text-slate-500">Nada por aquí todavía.</p>}
-      </div>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            {sec.list.map((r) => (
+              <div class="ck-card flex items-center gap-4 !p-4">
+                <span class={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${GAME_META[r.type]?.gradient} text-3xl`}>{GAME_META[r.type]?.emoji}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-bold">{r.title}</p>
+                  <p class="text-xs text-slate-500">{count(r)} {GAME_META[r.type]?.countLabel} · {r.xp_reward} XP · usada {r.uses}× · {r.author ?? '—'}</p>
+                  {r.source_title && <p class="truncate text-xs text-violet-600">Copia de «{r.source_title}»</p>}
+                </div>
+                <a href={`/profe/actividades/${r.id}/probar`} class="ck-btn-sm" title="Probar">▶</a>
+                <a href={`/profe/actividades/${r.id}`} class="ck-btn-sm" title={r.visibility === 'public' && !isAdmin ? 'Personalizar (crea tu copia)' : 'Editar'}>✏️</a>
+              </div>
+            ))}
+            {!sec.list.length && <p class="text-slate-500">Nada por aquí todavía.</p>}
+          </div>
+        </>
+      ))}
     </>
   )}
 </CoachLayout>
