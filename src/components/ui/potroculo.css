@@ -18,6 +18,8 @@
 
 .pt .pt-speed, .pt .pt-steam, .pt .pt-vein, .pt .pt-tear { display: none; }
 
+.pt-paused, .pt-paused * { animation-play-state: paused !important; }
+
 /* ---------- happy (default) ---------- */
 .pt-m-happy .pt-head { animation: pt-tilt 3.2s ease-in-out infinite; }
 .pt-m-happy .pt-fore-l { animation: pt-pawn-show 3.2s ease-in-out infinite; }
@@ -32,7 +34,8 @@
 .pt-m-party .pt-fore-l, .pt-m-dance .pt-fore-l { transform: rotate(-44deg); }
 .pt-m-party .pt-leg-l, .pt-m-dance .pt-leg-l { animation: pt-kick-l .6s ease-in-out infinite; }
 .pt-m-party .pt-leg-r, .pt-m-dance .pt-leg-r { animation: pt-kick-r .6s ease-in-out infinite; }
-.pt-m-party .pt-tail, .pt-m-dance .pt-tail { animation: pt-swish .3s ease-in-out infinite; }
+.pt-m-party .pt-tail, .pt-m-dance .pt-tail { animation: pt-swish .6s ease-in-out infinite; }
+.pt-m-party .pt-eye, .pt-m-dance .pt-eye, .pt-m-run .pt-eye { animation: none; }
 .pt .pt-notes { animation: pt-notes 1.2s ease-out infinite; }
 
 /* ---------- wave ---------- */
@@ -46,11 +49,10 @@
 .pt-m-run .pt-leg-r { animation: pt-stride .6s ease-in-out infinite reverse; }
 .pt-m-run .pt-arm-r { animation: pt-arm-swing-r .6s ease-in-out infinite; }
 .pt-m-run .pt-arm-l { animation: pt-arm-swing-l .6s ease-in-out infinite; }
-.pt-m-run .pt-tail { transform: rotate(-22deg); animation: pt-flutter .15s ease-in-out infinite alternate; }
+.pt-m-run .pt-tail { transform: rotate(-22deg); animation: none; }
 .pt-m-run .pt-ear-l, .pt-m-run .pt-ear-r { transform: rotate(8deg); }
 .pt-m-run .pt-hat { transform: rotate(5deg) translate(2px, 1px); }
 .pt-m-run .pt-speed { display: inline; animation: pt-speed .3s linear infinite; }
-.pt-m-run .pt-shadow { animation: pt-shadow .3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 
 /* ---------- angry ---------- */
 .pt-m-angry .pt-all { animation: pt-shake .14s linear infinite; }
@@ -118,9 +120,7 @@
 @keyframes pt-stride { 0%,100% { transform: rotate(32deg) } 50% { transform: rotate(-32deg) translateY(-3px) } }
 @keyframes pt-arm-swing-r { 0%,100% { transform: rotate(-40deg) } 50% { transform: rotate(30deg) } }
 @keyframes pt-arm-swing-l { 0%,100% { transform: rotate(-30deg) } 50% { transform: rotate(25deg) } }
-@keyframes pt-flutter { from { transform: rotate(-26deg) } to { transform: rotate(-14deg) } }
 @keyframes pt-speed { from { transform: translateX(-6px); opacity: 1 } to { transform: translateX(14px); opacity: .2 } }
-@keyframes pt-shadow { 0%,100% { transform: scaleX(1) } 50% { transform: scaleX(.8) } }
 @keyframes pt-shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-2px) rotate(-1deg) } 75% { transform: translateX(2px) rotate(1deg) } }
 @keyframes pt-rage { 0%,100% { opacity: .12 } 50% { opacity: .32 } }
 @keyframes pt-fist-r { from { transform: rotate(-50deg) } to { transform: rotate(-68deg) } }
@@ -136,4 +136,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pt *, .pt .pt-all { animation: none !important; transition: none !important; }
+  .pt .pt-talkmouth { transform: scale(.9, .55); }
+  .pt .pt-speed { display: none !important; }
 }

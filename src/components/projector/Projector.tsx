@@ -109,7 +109,7 @@ export default function Projector({ classId, className, students, sources, backU
         <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
         <div class="mx-auto max-w-6xl">
           <div class="flex items-center gap-4">
-            <Potroculo mood="party" size={90} />
+            <Potroculo mood="wave" size={130} />
             <div>
               <h1 class="font-display text-5xl font-extrabold">📽️ Modo proyector</h1>
               <p class="text-xl text-violet-200">{className} · ¡Equipos contra equipos!</p>
@@ -527,7 +527,7 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
   const xpOf = (id: number) => save.xp?.get(id) ?? preview.get(id) ?? 0;
   return (
     <div class="ck-projector flex min-h-dvh flex-col items-center p-6">
-      <Potroculo mood="party" size={100} />
+      <Potroculo mood="party" size={150} />
       <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
       <div class="mt-8 flex items-end gap-4">
         {order.map((i) => {

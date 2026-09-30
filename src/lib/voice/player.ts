@@ -168,6 +168,8 @@ function bestVoice(male: boolean): SpeechSynthesisVoice | null {
   return best;
 }
 
+let utterances = 0;
+
 function webSpeak(text: string, coach: Coach) {
   const ss = window.speechSynthesis;
   if (!ss) return;
@@ -178,8 +180,11 @@ function webSpeak(text: string, coach: Coach) {
     if (v) u.voice = v;
     u.rate = coach.web.rate;
     u.pitch = coach.web.pitch;
+    // A cancelled utterance's onerror/onend can arrive after the next one starts: only the
+    // latest utterance may turn the lips off.
+    const mine = ++utterances;
     u.onstart = () => setTalking(true);
-    u.onend = u.onerror = () => setTalking(false);
+    u.onend = u.onerror = () => { if (mine === utterances) setTalking(false); };
     ss.speak(u);
   } catch { /* ignore */ }
 }

@@ -74,7 +74,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
     },
     bad(text) {
       sfx.wrong();
-      flashMood('sad', 1600);
+      flashMood('think', 1600); // mistakes stay gentle: Potróculo ponders, never cries
       const said = text ?? line('wrong');
       showFeedback('bad', said);
       if (text === undefined || ageGroup === 'peque') speak(said);
@@ -200,7 +200,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
         {/* Mascot + bubble */}
         <div class="flex w-full max-w-[min(92vw,66vh)] items-end gap-2 md:w-72 md:max-w-none md:flex-col md:items-center">
           <div class="shrink-0">
-            <Potroculo mood={mood} size={ageGroup === 'peque' ? 86 : 72} class="md:!w-40 md:!h-auto" />
+            <Potroculo mood={mood} size={ageGroup === 'peque' ? 96 : 76} class="md:!w-40 md:!h-auto" />
           </div>
           {bubble && (
             <div key={bubble} class="ck-rise relative mb-3 flex-1 rounded-2xl border-2 border-violet-200 bg-white px-4 py-3 font-bold text-slate-700 shadow-sm md:mb-0 md:w-full md:text-lg">
@@ -215,7 +215,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
       </main>
 
       {phase === 'saving' && (
-        <div class="fixed inset-0 z-40 flex items-center justify-center bg-white/70 backdrop-blur">
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-white/90">
           <div class="text-center"><Potroculo mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
         </div>
       )}

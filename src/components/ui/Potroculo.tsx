@@ -2,7 +2,7 @@
 // golden pawn. Original SVG "puppet": every body part is its own group (head, ears, eyes, mouth,
 // arms, legs, tail, hat) so CSS can animate it — no image files, no 3D engine, cheap on phones.
 // Poses and animations live in potroculo.css; the mood picks one of them.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { onTalking } from '../../lib/voice/talking';
 import './potroculo.css';
 
@@ -186,6 +186,16 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
   const [voice, setVoice] = useState(false);
   useEffect(() => (talking === undefined ? onTalking(setVoice) : undefined), [talking]);
   const talk = talking ?? voice;
+  // Pause every animation while the mascot is off-screen (saves battery on cheap phones).
+  const ref = useRef<SVGSVGElement>(null);
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const armsUp = mood === 'party' || mood === 'dance';
 
   return (
@@ -193,7 +203,8 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
       viewBox="0 0 200 240"
       width={size}
       height={(size * 240) / 200}
-      class={`pt pt-m-${mood} ${talk ? 'pt-talk' : ''} ${cls}`}
+      ref={ref}
+      class={`pt pt-m-${mood} ${talk ? 'pt-talk' : ''} ${visible ? '' : 'pt-paused'} ${cls}`}
       aria-hidden="true"
       overflow="visible"
     >
