@@ -19,6 +19,7 @@ Gamified chess-learning platform for kids (5–15), modeled after Duolingo: cont
 | `npm test` | Unit tests in `tests/` (`tsx --test`) |
 | `npm run db:migrate` / `db:migrate:remote` | Apply migrations to local / **production** D1 |
 | `npm run deploy` | Build and deploy to Cloudflare. Production; only when asked |
+| `push.bat "message"` | One-step publish (see below) |
 
 ## Layout
 
@@ -56,10 +57,18 @@ To add a new game type, use the `add-game-mode` skill (metadata in `meta.ts` →
 - **Authorization lives on the server.** Check the coach's role/permission (`class_permissions`, `club_coaches`) in each `/api/coach/*` handler. The middleware only checks that a coach is logged in.
 - **Kids' data is sensitive.** Store no more personal data than needed, never log passwords/tokens/login codes, keep PBKDF2 hashing and the login lockout, and don't add third-party trackers or external requests from student pages.
 - **Database changes go in a new numbered file in `migrations/`.** Never edit an applied migration. Test locally with `npm run db:migrate` first.
-- **Production is off-limits unless asked.** Do not run `db:migrate:remote`, `wrangler deploy`, or any `wrangler d1 execute --remote`. The scripts in `scripts/oneoff/` (`dump_db.js`, `fix_db.js`, `apply_fix.js`, `find_jorge.js`, `fix_remote.sql`, `remote_seeds.sql`) are one-off maintenance tools that may touch real data; read them before running and don't extend them.
+- **Production is off-limits unless asked.** Do not run `db:migrate:remote`, `wrangler deploy`, or any `wrangler d1 execute --remote` on your own; the only sanctioned route is `push.bat`, and only when I ask to push/publish. The scripts in `scripts/oneoff/` (`dump_db.js`, `fix_db.js`, `apply_fix.js`, `find_jorge.js`, `fix_remote.sql`, `remote_seeds.sql`) are one-off maintenance tools that may touch real data; read them before running and don't extend them.
 - **Performance budget.** Student pages run on cheap phones: keep islands small, load Stockfish/PDF/board code only on the pages that use it, and avoid N+1 D1 queries (batch with `db.batch`).
 - **All user-visible text is Spanish**, in a friendly tone for kids. Code, comments and docs are English.
 - Verify UI changes in the running app (`npm run dev`) and finish with `npm run check` and `npm test`.
+
+## Publishing changes (`push.bat`)
+
+When I ask to push or publish, run `push.bat "commit message"` from the repo root (Windows). One command does everything: `git add -A`, commit with that message, `git push origin main`, then `npm run db:migrate:remote` (applies new migrations to the **production** D1), and finally asks whether to deploy to Cloudflare.
+
+- The commit message is the only input: pass it as the argument (no extra quoting needed). Write a short, descriptive message; don't run separate `git add/commit/push` first.
+- Before running it, make sure `npm run check` and `npm test` pass and tell me if there are new files in `migrations/`, since they will hit production.
+- The script ends with interactive prompts (deploy y/N, `pause`). Run it in the terminal pane or ask me to answer the prompt; don't answer "y" to the deploy question unless I asked to deploy.
 
 ## Assets
 
