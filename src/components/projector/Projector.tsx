@@ -167,8 +167,15 @@ export default function Projector({ classId, className, students, sources, backU
                 {!sources.length && <p class="opacity-80">Crea primero una actividad de problemas en el panel de profe.</p>}
               </div>
               <h2 class="mt-5 font-display text-2xl font-extrabold">3. Tiempo por turno</h2>
-              <div class="mt-2 flex flex-wrap gap-2">
-                {[20, 30, 45, 60, 90].map((n) => <button key={n} onClick={() => setTurnSeconds(n)} class={`min-h-11 rounded-xl px-4 py-2 font-black ${turnSeconds === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}s</button>)}
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                {[15, 30, 45, 60].map((n) => <button key={n} onClick={() => setTurnSeconds(n)} class={`min-h-11 rounded-xl px-4 py-2 font-black ${turnSeconds === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}s</button>)}
+                <div class={`flex min-h-11 items-center rounded-xl px-2 font-black transition-colors focus-within:ring-2 focus-within:ring-white ${![15, 30, 45, 60].includes(turnSeconds) ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>
+                  <input type="number" min="5" max="999" value={turnSeconds || ''}
+                    onBlur={(e) => setTurnSeconds(Math.max(5, parseInt(e.currentTarget.value) || 15))}
+                    onInput={(e) => setTurnSeconds(parseInt(e.currentTarget.value) || 0)}
+                    class="w-12 bg-transparent text-center font-black outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <span>s</span>
+                </div>
               </div>
               <h2 class="mt-5 font-display text-2xl font-extrabold">4. Premio ✨</h2>
               {canAward ? (
