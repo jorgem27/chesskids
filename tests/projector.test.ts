@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampBudget, creditedSeconds, distributeXp, isAllowedBudget, validateTournament, type KidTally } from '../src/lib/projector';
+import { clampBudget, creditedSeconds, distributeXp, fmtPoints, isAllowedBudget, kidPoints, validateTournament, type KidTally } from '../src/lib/projector';
 
 const kid = (studentId: number, team: number, picks = 0, solved = 0, points = 0): KidTally => ({ studentId, team, picks, solved, points });
 
@@ -13,7 +13,7 @@ test('projector xp: best kid of winning team gets the full budget', () => {
 
 test('projector xp: losing team scores proportionally', () => {
   const r = distributeXp(20, [9, 3], [kid(1, 0), kid(2, 1)]);
-  // no picks -> personal share joins team share (70%): 6 + 14 = 20 ; 6 + 14/3 = 10.67
+  // no dice: each lone kid gets all their team's points. 6+8+6 = 20 ; 6 + 8/3 + 6/3 = 10.67
   assert.deepEqual(r.map((x) => x.total), [20, 11]);
 });
 
@@ -60,4 +60,17 @@ test('projector: only UI budgets are accepted, time is capped per puzzle', () =>
   assert.equal(creditedSeconds(900, 10), 900);
   assert.equal(creditedSeconds(99_999, 100), 7200);
   assert.equal(creditedSeconds(-5, 3), 0);
+});
+
+test('projector: team points nobody won with the dice are shared by the team', () => {
+  // Unicornios 10 pts (Sofía won 3 with the dice), Dragones 6 (only Jorge), Cohetes 6 (Gabriel + Kevin), no dice.
+  const kids = [kid(1, 0, 2, 1, 3), kid(2, 1), kid(3, 2), kid(4, 2)];
+  const pts = kidPoints([10, 6, 6], kids);
+  assert.deepEqual([...pts.values()], [10, 6, 3, 3]);
+  assert.deepEqual(distributeXp(10, [10, 6, 6], kids).map((x) => x.total), [10, 7, 6, 6]);
+  // Dice points stay with their owner, the rest is split: team of 3 scored 7, Ana won 3 -> Ana 3+4/3, others 4/3.
+  const p2 = kidPoints([7], [kid(5, 0, 1, 1, 3), kid(6, 0), kid(7, 0)]);
+  assert.equal(fmtPoints(p2.get(5)!), '4,3');
+  assert.equal(fmtPoints(p2.get(6)!), '1,3');
+  assert.equal(fmtPoints(6), '6');
 });

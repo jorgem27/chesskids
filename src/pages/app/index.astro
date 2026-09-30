@@ -1,6 +1,7 @@
 ---
 import StudentLayout from '../../layouts/StudentLayout.astro';
 import Welcome from '../../components/student/Welcome';
+import CoachPicker from '../../components/student/CoachPicker';
 import { GAME_META } from '../../games/meta';
 import { studentMissions, today, weeklyLeaderboard, xpToday, type ClassRow } from '../../lib/db';
 import { addDays, dueLabel } from '../../lib/dates';
@@ -159,6 +160,8 @@ const medal = ['🥇', '🥈', '🥉'];
       ))}
     </ol>
   </section>
+
+  <CoachPicker client:visible />
 
   <form method="post" action="/api/auth/logout" class="mt-8 text-center">
     <button class="text-sm font-bold text-slate-400 hover:text-slate-600">Cerrar sesión en este dispositivo</button>

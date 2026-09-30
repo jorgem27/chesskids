@@ -50,18 +50,37 @@ export function creditedSeconds(seconds: unknown, puzzlesPlayed: number): number
 }
 
 /**
+ * Points each kid earned for their team: the points scored while the dice had picked them, plus an equal
+ * share of the team's points that no picked kid claimed (puzzles the team solved together, without the dice).
+ * A team of 1 that scored 6 points without the dice -> 6; a team of 2 -> 3 each.
+ */
+/** Points for display: whole numbers as-is, shares with one decimal and a Spanish comma (1,5). */
+export function fmtPoints(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
+}
+
+export function kidPoints(teamScores: number[], kids: KidTally[]): Map<number, number> {
+  const claimed = teamScores.map(() => 0);
+  const size = teamScores.map(() => 0);
+  for (const k of kids) { claimed[k.team] += k.points; size[k.team]++; }
+  const share = teamScores.map((s, i) => (size[i] ? Math.max(0, s - claimed[i]) / size[i] : 0));
+  return new Map(kids.map((k) => [k.studentId, k.points + share[k.team]]));
+}
+
+/**
  * Splits `budget` (the most XP any single kid can earn) for every participant:
  *  - play:     SHARES.play × budget for everyone who took part.
  *  - team:     SHARES.team × budget × teamScore / bestTeamScore (winners get it all, others proportionally).
- *  - personal: SHARES.personal × budget × merit / bestMerit, merit = picks × PICK_MERIT + points.
- * If nobody scored, the team share moves to `play`; if nobody was picked, the personal share moves to `team`
+ *  - personal: SHARES.personal × budget × merit / bestMerit, merit = picks × PICK_MERIT + kidPoints.
+ * If nobody scored, the team share moves to `play`; if nobody has merit, the personal share moves to `team`
  * (or to `play` when neither happened), so the budget is always fully usable.
  * Every participant gets at least 1 XP when budget > 0, and never more than `budget`.
  */
 export function distributeXp(budget: number, teamScores: number[], kids: KidTally[]): XpSplit[] {
   const b = clampBudget(budget);
   const bestTeam = Math.max(0, ...teamScores);
-  const merit = (k: KidTally) => k.picks * PICK_MERIT + k.points;
+  const pts = kidPoints(teamScores, kids);
+  const merit = (k: KidTally) => k.picks * PICK_MERIT + (pts.get(k.studentId) ?? 0);
   const bestMerit = Math.max(0, ...kids.map(merit));
 
   let wPlay: number = SHARES.play;

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { getGame } from '../../games/registry';
 import type { GameApi, GameResult } from '../../games/types';
 import type { AgeGroup } from '../../lib/catalog';
-import { burst, speak } from '../../lib/fx';
-import { ENCOURAGE, PRAISE, pick, starsFor } from '../../lib/rewards';
+import { burst, cheer, line, speak } from '../../lib/fx';
+import { starsFor } from '../../lib/rewards';
 import { isMuted, setMuted, sfx, vibrate } from '../../lib/sfx';
 import { Mascot, type Mood } from '../ui/Mascot';
 import { Results, type RewardResponse } from './Results';
@@ -36,6 +36,7 @@ export default function GamePlayer({ activity, assignmentId = null, ageGroup, pr
   const seconds = useRef(0);
   const fbTimer = useRef<number | null>(null);
   const moodTimer = useRef<number | null>(null);
+  const lastStreak = useRef(0);
 
   // Active-time counter (pauses when the tab is hidden)
   useEffect(() => {
@@ -62,14 +63,20 @@ export default function GamePlayer({ activity, assignmentId = null, ageGroup, pr
       sfx.correct();
       vibrate([30, 40, 30]);
       flashMood(opts?.big ? 'party' : 'happy');
-      showFeedback('good', text ?? pick(PRAISE));
+      const said = text ?? line(opts?.big ? 'perfect' : 'correct');
+      showFeedback('good', said);
+      // The youngest hear everything; older kids hear big moments and some praise, so it
+      // doesn't get chatty in fast modes. Never talk over a streak line just said.
+      const talk = ageGroup === 'peque' || (text === undefined && (opts?.big || Math.random() < 0.4));
+      if (talk && Date.now() - lastStreak.current > 1500) speak(said);
       if (opts?.big) burst(0.5, 0.55, 0.8);
     },
     bad(text) {
       sfx.wrong();
       flashMood('sad', 1600);
-      showFeedback('bad', text ?? pick(ENCOURAGE));
-      if (ageGroup === 'peque' && text) speak(text);
+      const said = text ?? line('wrong');
+      showFeedback('bad', said);
+      if (text === undefined || ageGroup === 'peque') speak(said);
     },
     say(text, opts) {
       setBubble(text);
@@ -81,6 +88,7 @@ export default function GamePlayer({ activity, assignmentId = null, ageGroup, pr
     combo(n) {
       setCombo(n);
       if (n >= 2) { sfx.combo(n); if (n % 5 === 0) burst(0.5, 0.3, 0.6); }
+      if (n === 3 || (n >= 5 && n % 5 === 0)) { cheer('streak', { n }); lastStreak.current = Date.now(); }
     },
     speak,
     finish(r) {
@@ -117,6 +125,7 @@ export default function GamePlayer({ activity, assignmentId = null, ageGroup, pr
     seconds.current = 0;
     setPhase('play');
     if (ageGroup === 'peque') speak(`${game.name}. ${game.tagline}`);
+    else if (ageGroup !== 'maestro') cheer('start');
   }
 
   function replay() {

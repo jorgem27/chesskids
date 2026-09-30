@@ -1,5 +1,6 @@
 import { useEffect } from 'preact/hooks';
-import { burst, speak } from '../../lib/fx';
+import { burst, cheer } from '../../lib/fx';
+import { missionsText } from '../../lib/voice/phrases';
 import { sfx } from '../../lib/sfx';
 
 /** One-shot welcome celebration after login (?hola=1). */
@@ -8,7 +9,8 @@ export default function Welcome({ name, missions }: { name: string; missions: nu
     const t = setTimeout(() => {
       burst(0.5, 0.3, 1);
       sfx.coin();
-      speak(missions > 0 ? `¡Hola ${name}! Tienes ${missions} ${missions === 1 ? 'misión' : 'misiones'} esta semana.` : `¡Hola ${name}! ¡Vamos a jugar!`);
+      if (missions > 0) cheer('welcomeMissions', { name, missions: missionsText(missions) });
+      else cheer('welcomeFree', { name });
       history.replaceState(null, '', '/app');
     }, 400);
     return () => clearTimeout(t);

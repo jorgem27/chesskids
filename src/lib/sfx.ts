@@ -13,6 +13,9 @@ export function setMuted(v: boolean) {
   try { localStorage.setItem('ck-muted', v ? '1' : '0'); } catch { /* ignore */ }
 }
 
+/** Shared (lazily created) AudioContext; also used to play the coach voice clips. */
+export function audioContext(): AudioContext | null { return ac(); }
+
 function ac(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!ctx) {

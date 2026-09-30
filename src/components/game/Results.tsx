@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { GameResult } from '../../games/types';
-import { burst, emojiRain, sideCannons, speak, starShower } from '../../lib/fx';
+import { burst, cheer, emojiRain, sideCannons, starShower } from '../../lib/fx';
 import { KINGDOMS, stickerById, type XpBreakdown } from '../../lib/rewards';
 import { sfx, vibrate } from '../../lib/sfx';
 import { Mascot } from '../ui/Mascot';
@@ -34,7 +34,7 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
     const T = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
     sfx.fanfare();
     sideCannons();
-    speak(stars >= 2 ? '¡Lo has conseguido! ¡Enhorabuena!' : '¡Buen trabajo! ¡Sigue practicando!');
+    cheer(stars >= 3 ? 'resultsPerfect' : stars === 2 ? 'resultsGood' : 'resultsOk');
     for (let i = 0; i < stars; i++) T(500 + i * 420, () => { setShownStars(i + 1); sfx.star(i); vibrate(40); });
     const afterStars = 500 + stars * 420 + 200;
     if (stars === 3) T(afterStars, starShower);
@@ -63,9 +63,9 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
   const current = overlays[0];
   useEffect(() => {
     if (!current) return;
-    if (current.kind === 'level') { sfx.levelUp(); burst(0.5, 0.5, 1.5); speak(`¡Subes al nivel ${current.level}!`); }
-    if (current.kind === 'kingdom') { sfx.levelUp(); emojiRain(KINGDOMS[current.index].emoji); speak(`¡Nuevo reino desbloqueado! ${KINGDOMS[current.index].name}`); }
-    if (current.kind === 'sticker') { sfx.pop(); setTimeout(() => sfx.star(2), 200); burst(0.5, 0.45, 0.7); const s = stickerById(current.id); if (s) speak(`¡Nuevo cromo! ${s.name}`); }
+    if (current.kind === 'level') { sfx.levelUp(); burst(0.5, 0.5, 1.5); cheer('levelUp', { level: current.level }, { queue: true }); }
+    if (current.kind === 'kingdom') { sfx.levelUp(); emojiRain(KINGDOMS[current.index].emoji); cheer('kingdom', { kingdom: KINGDOMS[current.index].name }, { queue: true }); }
+    if (current.kind === 'sticker') { sfx.pop(); setTimeout(() => sfx.star(2), 200); burst(0.5, 0.45, 0.7); const s = stickerById(current.id); if (s) cheer('sticker', { sticker: s.name }, { queue: true }); }
     vibrate([50, 50, 80]);
   }, [current]);
 

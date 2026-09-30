@@ -27,27 +27,6 @@ export function emojiRain(emoji: string) {
   confetti({ particleCount: 30, spread: 160, origin: { y: 0.2 }, shapes: [s], scalar: 2.5, gravity: 0.7, ticks: 250, flat: true } as any);
 }
 
-// ---------- Voice (speechSynthesis in Spanish) ----------
-
-let voice: SpeechSynthesisVoice | null = null;
-function pickVoice() {
-  const vs = window.speechSynthesis?.getVoices() ?? [];
-  voice = vs.find((v) => v.lang === 'es-ES') ?? vs.find((v) => v.lang.startsWith('es')) ?? null;
-}
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  pickVoice();
-  window.speechSynthesis.onvoiceschanged = pickVoice;
-}
-
-export function speak(text: string) {
-  if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
-  try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ''));
-    u.lang = 'es-ES';
-    if (voice) u.voice = voice;
-    u.rate = 0.95;
-    u.pitch = 1.15;
-    window.speechSynthesis.speak(u);
-  } catch { /* ignore */ }
-}
+// ---------- Voice ----------
+// Spoken lines go through the AI coach voice (src/lib/voice): recorded clips or speechSynthesis.
+export { cheer, line, speak } from './voice/player';
