@@ -24,10 +24,13 @@ Claude Code starts every session knowing nothing about your project except what 
 
 The app must scale to many clubs and thousands of children, so the most expensive mistakes are cross-club data leaks, client-trusted rewards, and unindexed queries. Those are exactly what `AGENTS.md`, `api-and-database.md` and `scale-reviewer` guard against. The other big risk is production: migrations and deploys are behind skills and explicit rules so nothing touches real data by accident.
 
+## Already done
+
+- Loose one-off scripts moved to `scripts/oneoff/`.
+- A `Stop` hook (`.claude/settings.json` → `scripts/hooks/verify.mjs`) runs `npm run check` and `npm test` before Claude finishes whenever `src/` or `tests/` changed, and sends failures back to Claude.
+- GitHub Actions CI (`.github/workflows/ci.yml`) runs check, test and build on every push and pull request. It only takes effect once the repo is on GitHub.
+
 ## Suggested next steps
 
-1. Move the loose root scripts (`dump_db.js`, `fix_db.js`, …) into a `scripts/` folder or delete them, and git-ignore anything that contains real data.
-2. Add a hook that runs `npm run check` after edits (`/hooks`, or ask Claude to configure it).
-3. Set up GitHub + CI (`check` + `test`) before deploying automatically.
-4. Add Cloudflare observability and error tracking once real users arrive.
-5. Consider Cloudflare R2 for coach-uploaded PDFs and images instead of storing them in D1.
+1. Push the repo to GitHub (private) so CI runs.
+2. Add Cloudflare observability and error tracking once real users arrive.

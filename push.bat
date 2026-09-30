@@ -9,10 +9,13 @@ echo      ChessKids Academy - Push Code & Database
 echo ========================================================
 echo.
 
-:: Determine commit message
-set "COMMIT_MSG=%~1"
+:: Determine commit message (all arguments captured together, no quotes needed)
+set "COMMIT_MSG=%*"
 if "%COMMIT_MSG%"=="" (
     set /p "COMMIT_MSG=Enter commit message (press Enter for default): "
+)
+if defined COMMIT_MSG (
+    set "COMMIT_MSG=!COMMIT_MSG:"=!"
 )
 if "!COMMIT_MSG!"=="" (
     set "COMMIT_MSG=Update code and database - %DATE% %TIME%"
