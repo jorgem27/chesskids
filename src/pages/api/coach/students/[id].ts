@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { hashSecret } from '../../../../lib/auth';
+import { checkCoachPassword, hashSecret } from '../../../../lib/auth';
 import { AVATARS, makeKidPassword, makeRandomPin, makeToken, PIN_EMOJIS, splitPin } from '../../../../lib/catalog';
 import { classPerm, json, readJson } from '../../../../lib/db';
 
@@ -50,12 +50,19 @@ export const PATCH: APIRoute = async ({ locals, params, request }) => {
   return json({ error: 'Acción desconocida' }, 400);
 };
 
-export const DELETE: APIRoute = async ({ locals, params }) => {
+// Permanently deletes the student and their progress (password required).
+export const DELETE: APIRoute = async ({ locals, params, request }) => {
   const st = await load(locals, Number(params.id));
   if (!st) return json({ error: 'Sin permiso' }, 403);
+  const b = await readJson<{ password: string }>(request).catch(() => ({ password: '' }));
+  const bad = await checkCoachPassword(locals.db, locals.coach!.id, b.password);
+  if (bad) return json({ error: bad }, 403);
   await locals.db.batch([
-    locals.db.prepare('UPDATE students SET archived = 1 WHERE id = ?').bind(st.id),
     locals.db.prepare("DELETE FROM sessions WHERE user_type = 'student' AND user_id = ?").bind(st.id),
+    locals.db.prepare('DELETE FROM attempts WHERE student_id = ?').bind(st.id),
+    locals.db.prepare('DELETE FROM student_stickers WHERE student_id = ?').bind(st.id),
+    locals.db.prepare('DELETE FROM projector_results WHERE student_id = ?').bind(st.id),
+    locals.db.prepare('DELETE FROM students WHERE id = ?').bind(st.id),
   ]);
   return json({ ok: true });
 };

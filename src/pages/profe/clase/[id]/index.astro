@@ -50,6 +50,25 @@ if (tab === 'progreso' && canView) {
   grid = new Map(results.map((r) => [`${r.student_id}:${r.activity_id}`, r.stars]));
 }
 
+// Projector tournaments: last 20, with every kid's record.
+type Tourney = { id: number; day: string; xp_budget: number; puzzles_played: number; seconds: number; teams: { name: string; emoji: string; color: string; score: number }[];
+  kids: { student_id: number; name: string; avatar: string; team: number; picks: number; solved: number; points: number; xp_earned: number }[] };
+let tourneys: Tourney[] = [];
+if (tab === 'torneos' && canView) {
+  const [sessions, rows] = await db.batch<any>([
+    db.prepare('SELECT id, day, xp_budget, puzzles_played, seconds, teams_json FROM projector_sessions WHERE class_id = ? ORDER BY id DESC LIMIT 20').bind(id),
+    db.prepare(
+      `SELECT pr.session_id, pr.student_id, s.display_name AS name, s.avatar, pr.team, pr.picks, pr.solved, pr.points, pr.xp_earned
+       FROM projector_results pr JOIN students s ON s.id = pr.student_id
+       WHERE pr.session_id IN (SELECT id FROM projector_sessions WHERE class_id = ? ORDER BY id DESC LIMIT 20)
+       ORDER BY pr.xp_earned DESC, s.display_name`,
+    ).bind(id),
+  ]);
+  tourneys = sessions.results.map((r: any) => ({
+    ...r, teams: JSON.parse(r.teams_json), kids: rows.results.filter((k: any) => k.session_id === r.id),
+  }));
+}
+
 const { results: coaches } = await db.prepare(
   `SELECT c.id, c.name, c.email, p.* FROM class_permissions p JOIN coaches c ON c.id = p.coach_id WHERE p.class_id = ? ORDER BY p.is_owner DESC, c.name`,
 ).bind(id).all<any>();
@@ -57,7 +76,7 @@ const { results: coaches } = await db.prepare(
 const tabs = [
   { id: 'alumnos', label: '👧 Alumnos y accesos' },
   { id: 'deberes', label: '🎒 Deberes' },
-  ...(canView ? [{ id: 'progreso', label: '📈 Progreso' }] : []),
+  ...(canView ? [{ id: 'progreso', label: '📈 Progreso' }, { id: 'torneos', label: '🏆 Torneos' }] : []),
   { id: 'profes', label: '🤝 Profes' },
 ];
 const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)} min`);
@@ -71,6 +90,30 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
     </div>
     <a href={`/profe/clase/${id}/proyector`} class="ck-btn ck-btn-orange">📽️ Modo proyector</a>
   </div>
+
+  {perm.is_owner && (
+    <details class="ck-card mt-4 !p-4">
+      <summary class="cursor-pointer font-bold">⚙️ Ajustes de la clase</summary>
+      <div class="mt-4 grid gap-6 md:grid-cols-2">
+        <form data-api="/api/coach/classes" data-method="PATCH" class="space-y-2">
+          <input type="hidden" name="classId" value={id} />
+          <label class="block text-sm font-bold">Nombre de la clase
+            <input name="name" value={cls.name} maxlength="40" required class="ck-input mt-1 w-full" />
+          </label>
+          <p data-error class="text-sm font-bold text-rose-600"></p>
+          <button type="submit" class="ck-btn ck-btn-primary">Guardar nombre</button>
+        </form>
+        <form data-api="/api/coach/classes" data-method="DELETE" data-redirect="/profe" class="space-y-2 rounded-2xl bg-rose-50 p-3">
+          <input type="hidden" name="classId" value={id} />
+          <p class="text-sm font-bold text-rose-700">🗑️ Borrar la clase</p>
+          <p class="text-xs text-rose-700">Se borran también todos sus alumnos y su progreso. No se puede deshacer.</p>
+          <input name="password" type="password" required autocomplete="current-password" placeholder="Tu contraseña para confirmar" class="ck-input w-full" />
+          <p data-error class="text-sm font-bold text-rose-600"></p>
+          <button type="submit" class="ck-btn !bg-rose-600 !text-white" onclick="return confirm('¿Seguro que quieres borrar esta clase y todos sus alumnos?')">Borrar clase para siempre</button>
+        </form>
+      </div>
+    </details>
+  )}
 
   <nav class="mt-5 flex flex-wrap gap-2">
     {tabs.map((tb) => <a href={`?tab=${tb.id}`} class={`rounded-2xl px-4 py-2 font-bold ${tab === tb.id ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{tb.label}</a>)}
@@ -113,6 +156,45 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
             ))}
           </tbody>
         </table>
+      </div>
+    )}
+
+    {tab === 'torneos' && canView && (
+      <div class="space-y-4">
+        {!tourneys.length && (
+          <p class="ck-card text-slate-500">Aún no hay torneos guardados. Juega uno en el <a href={`/profe/clase/${id}/proyector`} class="font-bold text-violet-700">📽️ Modo proyector</a> y pulsa «Repartir el XP» (o «Guardar resultado») al final.</p>
+        )}
+        {tourneys.map((tn) => {
+          const best = Math.max(...tn.teams.map((t) => t.score));
+          return (
+            <div class="ck-card">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="font-display text-xl font-extrabold">🏆 {relativeDay(tn.day, t)}</h2>
+                <span class="text-sm text-slate-500">{tn.puzzles_played} {tn.puzzles_played === 1 ? 'problema' : 'problemas'} · {fmtTime(tn.seconds)} · {tn.xp_budget ? `hasta ${tn.xp_budget} XP` : 'sin XP'}</span>
+              </div>
+              <p class="mt-1 text-xs text-slate-500">🎲 veces que salió con el dado · ✅ problemas resueltos · Pts: puntos para su equipo</p>
+              <div class="mt-3 grid gap-3 md:grid-cols-2">
+                {tn.teams.map((tm, i) => (
+                  <div class="overflow-x-auto rounded-2xl p-3" style={{ background: `${tm.color}1a`, border: `2px solid ${tm.color}` }}>
+                    <p class="font-bold">{tm.emoji} {tm.name} · {tm.score} pts {tm.score === best && best > 0 ? '🥇' : ''}</p>
+                    <table class="mt-2 w-full text-sm">
+                      <thead class="text-left text-xs text-slate-500"><tr><th class="py-1">Alumno</th><th title="Veces que salió con el dado">🎲</th><th title="Problemas resueltos">✅</th><th title="Puntos para su equipo">Pts</th><th class="text-right">XP</th></tr></thead>
+                      <tbody>
+                        {tn.kids.filter((k) => k.team === i).map((k) => (
+                          <tr class="border-t border-slate-100">
+                            <td class="py-1 font-bold"><span class="mr-1">{k.avatar}</span>{k.name}</td>
+                            <td>{k.picks}</td><td>{k.solved}</td><td>{k.points}</td>
+                            <td class="text-right font-bold text-violet-700">+{k.xp_earned}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     )}
 

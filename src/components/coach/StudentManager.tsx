@@ -26,6 +26,9 @@ export default function StudentManager({ classId, classCode, className, origin, 
   const [secret, setSecret] = useState<{ label: string; value: string } | null>(null);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState('');
+  const [delPass, setDelPass] = useState('');
+  const [delErr, setDelErr] = useState('');
+  const [newName, setNewName] = useState('');
   const classLink = `${origin}/c/${classCode}`;
   const personal = (t: string) => `${origin}/u/${t}`;
 
@@ -63,11 +66,16 @@ export default function StudentManager({ classId, classCode, className, origin, 
     } catch (ex) { setErr((ex as Error).message); }
   }
 
-  async function archive(s: StudentInfo) {
-    if (!confirm(`¿Quitar a ${s.name} de la clase? Su progreso se conserva pero no podrá entrar.`)) return;
-    await api(`/api/coach/students/${s.id}`, 'DELETE');
-    setStudents(students.filter((x) => x.id !== s.id));
-    setOpen(null);
+  async function remove(s: StudentInfo, e: Event) {
+    e.preventDefault();
+    setErr('');
+    setDelErr('');
+    try {
+      await api(`/api/coach/students/${s.id}`, 'DELETE', { password: delPass });
+      setStudents(students.filter((x) => x.id !== s.id));
+      setOpen(null);
+      setDelPass('');
+    } catch (ex) { setDelErr((ex as Error).message); }
   }
 
   const familyMsg = (s: { name: string; token: string }) =>
@@ -108,7 +116,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
               {canManage && (
                 <div class="flex gap-2">
                   <a class="ck-btn-sm !bg-emerald-50 !text-emerald-700" target="_blank" href={whatsappUrl(familyMsg(s))} title="Enviar acceso a la familia">💬</a>
-                  <button class="ck-btn-sm" onClick={() => { setSecret(null); setOpen(s); }}>🔑 Acceso</button>
+                  <button class="ck-btn-sm" onClick={() => { setSecret(null); setDelPass(''); setDelErr(''); setNewName(s.name); setOpen(s); }}>🔑 Acceso</button>
                 </div>
               )}
             </li>
@@ -185,14 +193,23 @@ export default function StudentManager({ classId, classCode, className, origin, 
             <details class="rounded-2xl bg-slate-50 p-3">
               <summary class="cursor-pointer font-bold">✏️ Editar</summary>
               <div class="mt-3 space-y-3">
-                <input class="ck-input w-full" defaultValue={open.name} onBlur={(e) => { const v = (e.target as HTMLInputElement).value.trim(); if (v && v !== open.name) action(open, 'update', { name: v }); }} />
+                <div class="flex gap-2">
+                  <input class="ck-input min-w-0 flex-1" value={newName} maxLength={30} onInput={(e) => setNewName((e.target as HTMLInputElement).value)} aria-label="Nombre del alumno" />
+                  <button class="ck-btn-sm" disabled={!newName.trim() || newName.trim() === open.name} onClick={() => action(open, 'update', { name: newName.trim() })}>Guardar nombre</button>
+                </div>
                 <select class="ck-input w-full" value={open.age_group} onChange={(e) => action(open, 'update', { ageGroup: (e.target as HTMLSelectElement).value })}>
                   {Object.entries(AGE_GROUPS).map(([k, v]) => <option value={k}>{v.emoji} {v.label} ({v.range})</option>)}
                 </select>
                 <div class="grid grid-cols-10 gap-1">
                   {AVATARS.map((a) => <button key={a} onClick={() => action(open, 'update', { avatar: a })} class={`rounded-lg text-2xl ${open.avatar === a ? 'bg-violet-200' : 'hover:bg-slate-200'}`}>{a}</button>)}
                 </div>
-                <button class="text-sm font-bold text-rose-600" onClick={() => archive(open)}>Quitar de la clase</button>
+                <form onSubmit={(e) => remove(open, e)} class="space-y-2 rounded-2xl bg-rose-50 p-3">
+                  <p class="text-sm font-bold text-rose-700">🗑️ Borrar alumno</p>
+                  <p class="text-xs text-rose-700">Se borran su cuenta y todo su progreso. No se puede deshacer.</p>
+                  <input type="password" required autocomplete="current-password" class="ck-input w-full" placeholder="Tu contraseña para confirmar" value={delPass} onInput={(e) => setDelPass((e.target as HTMLInputElement).value)} />
+                  {delErr && <p class="text-sm font-bold text-rose-600">{delErr}</p>}
+                  <button class="ck-btn-sm !bg-rose-600 !text-white">Borrar a {open.name}</button>
+                </form>
               </div>
             </details>
           </div>

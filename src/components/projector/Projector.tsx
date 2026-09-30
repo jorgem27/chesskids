@@ -2,16 +2,18 @@
 import type { Api } from '@lichess-org/chessground/api';
 import type { Key } from '@lichess-org/chessground/types';
 import { Chess } from 'chess.js';
+import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Board, isPromotion, syncBoard } from '../../games/chess/Board';
 import { applyUci, isCorrectMove, type Puzzle } from '../../games/puzzle/logic';
 import { burst, sideCannons, speak } from '../../lib/fx';
+import { distributeXp, POINTS, XP_BUDGETS, type KidTally } from '../../lib/projector';
 import { sfx } from '../../lib/sfx';
 import { Mascot } from '../ui/Mascot';
 
 interface Kid { id: number; name: string; avatar: string }
 interface Source { id: number; title: string; type: string; puzzles: Puzzle[] }
-interface Props { className: string; students: Kid[]; sources: Source[]; backUrl: string }
+interface Props { classId: number; className: string; students: Kid[]; sources: Source[]; backUrl: string; canAward: boolean }
 
 const TEAM_PRESETS = [
   { name: 'Dragones', emoji: '🐲', color: '#ef4444' },
@@ -21,6 +23,10 @@ const TEAM_PRESETS = [
 ];
 
 interface Team { name: string; emoji: string; color: string; members: Kid[]; score: number }
+/** Per-kid record for the current tournament. */
+interface Tally { picks: number; solved: number; points: number }
+type Tallies = Record<number, Tally>;
+const EMPTY: Tally = { picks: 0, solved: 0, points: 0 };
 
 function shuffle<T>(a: T[]): T[] {
   const b = [...a];
@@ -28,21 +34,43 @@ function shuffle<T>(a: T[]): T[] {
   return b;
 }
 
-export default function Projector({ className, students, sources, backUrl }: Props) {
+function newNonce() {
+  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+export default function Projector({ classId, className, students, sources, backUrl, canAward }: Props) {
   const [phase, setPhase] = useState<'setup' | 'play' | 'podium'>('setup');
   const [teamCount, setTeamCount] = useState(2);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [bench, setBench] = useState<Kid[]>([]);
+  const [sel, setSel] = useState<number | null>(null);
   const [chosen, setChosen] = useState<number[]>(sources.slice(0, 1).map((s) => s.id));
   const [turnSeconds, setTurnSeconds] = useState(45);
+  const [xpBudget, setXpBudget] = useState(canAward ? 10 : 0);
   const [pool, setPool] = useState<Puzzle[]>([]);
+  const [tallies, setTallies] = useState<Tallies>({});
+  const [played, setPlayed] = useState(0);
+  const run = useRef({ nonce: '', startedAt: 0 });
 
   function makeTeams(n: number) {
-    const mixed = shuffle(students);
+    const benched = new Set(bench.map((k) => k.id));
+    const mixed = shuffle(students.filter((k) => !benched.has(k.id)));
     const t: Team[] = TEAM_PRESETS.slice(0, n).map((p) => ({ ...p, members: [], score: 0 }));
     mixed.forEach((k, i) => t[i % n].members.push(k));
     setTeams(t);
+    setSel(null);
   }
   useEffect(() => makeTeams(teamCount), [teamCount]);
+
+  /** Tap a kid, then tap a team (or the bench) to move them there. */
+  function moveTo(dest: number | 'bench') {
+    const kid = students.find((k) => k.id === sel);
+    if (!kid) return;
+    setTeams(teams.map((t, i) => ({ ...t, members: [...t.members.filter((m) => m.id !== kid.id), ...(i === dest ? [kid] : [])] })));
+    setBench([...bench.filter((m) => m.id !== kid.id), ...(dest === 'bench' ? [kid] : [])]);
+    setSel(null);
+    sfx.pop();
+  }
 
   function start() {
     const puzzles = shuffle(sources.filter((s) => chosen.includes(s.id)).flatMap((s) => s.puzzles));
@@ -51,15 +79,33 @@ export default function Projector({ className, students, sources, backUrl }: Pro
     sfx.fanfare();
     setPool(puzzles);
     setTeams(teams.map((t) => ({ ...t, score: 0 })));
+    setTallies({});
+    setPlayed(0);
+    setSel(null);
+    run.current = { nonce: newNonce(), startedAt: Date.now() };
     setPhase('play');
     document.documentElement.requestFullscreen?.().catch(() => {});
   }
 
   if (phase === 'setup') {
+    const selKid = students.find((k) => k.id === sel);
+    const onBench = !!selKid && bench.some((m) => m.id === selKid.id);
+    const playing = teams.reduce((n, t) => n + t.members.length, 0);
+    // Move targets work with a tap, a click or the keyboard.
+    const asTarget = (active: boolean, go: () => void): JSX.HTMLAttributes<HTMLDivElement> => active
+      ? { role: 'button', tabIndex: 0, onClick: go, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } } }
+      : {};
+    const moveHere = <p class="mt-1 rounded-xl bg-white/25 px-2 py-1 text-center font-bold">👇 Mover aquí</p>;
+    const chip = (m: Kid) => (
+      <button key={m.id} onClick={(e) => { e.stopPropagation(); sfx.tap(); setSel(sel === m.id ? null : m.id); }}
+        class={`m-0.5 inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1 text-sm font-bold transition ${sel === m.id ? 'scale-110 bg-amber-400 text-amber-950 ring-4 ring-amber-200' : 'bg-black/25 hover:bg-black/40'}`}>
+        <span class="text-xl">{m.avatar}</span>{m.name}
+      </button>
+    );
     return (
       <div class="ck-projector min-h-dvh p-6 md:p-10">
-        <a href={backUrl} class="font-bold text-violet-200">← Volver</a>
-        <div class="mx-auto max-w-5xl">
+        <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
+        <div class="mx-auto max-w-6xl">
           <div class="flex items-center gap-4">
             <Mascot mood="party" size={90} />
             <div>
@@ -68,29 +114,47 @@ export default function Projector({ className, students, sources, backUrl }: Pro
             </div>
           </div>
 
-          <div class="mt-8 grid gap-6 lg:grid-cols-2">
+          <div class="mt-8 grid gap-6 lg:grid-cols-[3fr_2fr]">
             <div class="rounded-3xl bg-white/10 p-5">
-              <div class="flex items-center justify-between">
+              <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 class="font-display text-2xl font-extrabold">1. Equipos</h2>
                 <div class="flex gap-2">
-                  {[2, 3, 4].map((n) => <button key={n} onClick={() => setTeamCount(n)} class={`h-10 w-10 rounded-xl font-black ${teamCount === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}</button>)}
-                  <button onClick={() => { sfx.whoosh(); makeTeams(teamCount); }} class="rounded-xl bg-white/15 px-3 font-bold">🔀 Mezclar</button>
+                  {[2, 3, 4].map((n) => <button key={n} onClick={() => setTeamCount(n)} class={`h-11 w-11 rounded-xl font-black ${teamCount === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}</button>)}
+                  <button onClick={() => { sfx.whoosh(); makeTeams(teamCount); }} class="min-h-11 rounded-xl bg-white/15 px-3 font-bold">🔀 Mezclar todo</button>
                 </div>
               </div>
-              <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                {teams.map((t) => (
-                  <div key={t.name} class="rounded-2xl p-3" style={{ background: `${t.color}33`, border: `3px solid ${t.color}` }}>
-                    <p class="font-display text-xl font-extrabold">{t.emoji} {t.name}</p>
-                    <p class="mt-1 text-2xl leading-relaxed">{t.members.map((m) => <span title={m.name}>{m.avatar}</span>)}</p>
-                    <p class="text-xs opacity-80">{t.members.map((m) => m.name).join(', ') || 'Sin alumnos (juego libre)'}</p>
-                  </div>
-                ))}
+              <p class="mt-2 min-h-7 text-lg text-violet-100">
+                {selKid ? <>👉 Toca un equipo para mover a <b>{selKid.avatar} {selKid.name}</b></> : '✋ Toca un alumno para cambiarlo de equipo'}
+              </p>
+              <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                {teams.map((t, i) => {
+                  const target = !!selKid && !t.members.some((m) => m.id === selKid.id);
+                  return (
+                    <div key={t.name} {...asTarget(target, () => moveTo(i))}
+                      class={`rounded-2xl p-3 transition ${target ? 'cursor-pointer ring-4 ring-white/60 hover:scale-[1.02]' : ''}`}
+                      style={{ background: `${t.color}33`, border: `3px solid ${t.color}` }}>
+                      <p class="font-display text-xl font-extrabold">{t.emoji} {t.name} <span class="text-sm font-bold opacity-80">· {t.members.length}</span></p>
+                      <div class="mt-1">{t.members.map(chip)}</div>
+                      {!t.members.length && <p class="text-xs opacity-80">Sin alumnos (juego libre)</p>}
+                      {target && moveHere}
+                    </div>
+                  );
+                })}
               </div>
+              {students.length > 0 && (
+                <div {...asTarget(!!selKid && !onBench, () => moveTo('bench'))}
+                  class={`mt-3 rounded-2xl border-2 border-dashed border-white/30 p-3 ${selKid && !onBench ? 'cursor-pointer ring-4 ring-white/60' : ''}`}>
+                  <p class="font-bold">🪑 Hoy no juegan <span class="text-sm font-normal opacity-80">(no reciben XP)</span></p>
+                  <div class="mt-1">{bench.map(chip)}</div>
+                  {!bench.length && <p class="text-xs opacity-70">Mueve aquí a quien falte hoy.</p>}
+                  {selKid && !onBench && moveHere}
+                </div>
+              )}
             </div>
 
             <div class="rounded-3xl bg-white/10 p-5">
               <h2 class="font-display text-2xl font-extrabold">2. Problemas</h2>
-              <div class="mt-3 max-h-64 space-y-2 overflow-auto">
+              <div class="mt-3 max-h-56 space-y-2 overflow-auto">
                 {sources.map((s) => (
                   <label key={s.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl p-3 ${chosen.includes(s.id) ? 'bg-violet-500/60' : 'bg-white/10'}`}>
                     <input type="checkbox" checked={chosen.includes(s.id)} onChange={() => setChosen(chosen.includes(s.id) ? chosen.filter((x) => x !== s.id) : [...chosen, s.id])} />
@@ -101,12 +165,26 @@ export default function Projector({ className, students, sources, backUrl }: Pro
                 {!sources.length && <p class="opacity-80">Crea primero una actividad de problemas en el panel de profe.</p>}
               </div>
               <h2 class="mt-5 font-display text-2xl font-extrabold">3. Tiempo por turno</h2>
-              <div class="mt-2 flex gap-2">
-                {[20, 30, 45, 60, 90].map((n) => <button key={n} onClick={() => setTurnSeconds(n)} class={`rounded-xl px-4 py-2 font-black ${turnSeconds === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}s</button>)}
+              <div class="mt-2 flex flex-wrap gap-2">
+                {[20, 30, 45, 60, 90].map((n) => <button key={n} onClick={() => setTurnSeconds(n)} class={`min-h-11 rounded-xl px-4 py-2 font-black ${turnSeconds === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n}s</button>)}
               </div>
+              <h2 class="mt-5 font-display text-2xl font-extrabold">4. Premio ✨</h2>
+              {canAward ? (
+                <>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    {XP_BUDGETS.map((n) => <button key={n} onClick={() => setXpBudget(n)} class={`min-h-11 rounded-xl px-4 py-2 font-black ${xpBudget === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n ? `${n} XP` : 'Sin XP'}</button>)}
+                  </div>
+                  <p class="mt-2 text-base text-violet-100">
+                    {xpBudget
+                      ? `Hasta ${xpBudget} XP por alumno: 🎮 jugar (30 %) · 🏆 puntos del equipo (40 %) · 🎲 salir con el dado y acertar (30 %).`
+                      : 'Ronda de práctica: se guarda el resultado, pero no se da XP.'}
+                  </p>
+                </>
+              ) : <p class="mt-2 text-base text-violet-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
             </div>
           </div>
           <div class="mt-8 text-center">
+            {students.length > 0 && !playing && <p class="mb-3 text-lg font-bold text-amber-200">🪑 Nadie juega hoy: no se guardará ni se dará XP.</p>}
             <button disabled={!chosen.length} onClick={start} class="ck-btn ck-btn-orange px-16 py-6 text-3xl">¡Empezar el torneo! 🏁</button>
           </div>
         </div>
@@ -114,15 +192,25 @@ export default function Projector({ className, students, sources, backUrl }: Pro
     );
   }
 
-  if (phase === 'podium') return <Podium teams={teams} onAgain={() => setPhase('setup')} backUrl={backUrl} />;
+  if (phase === 'podium') {
+    return <Podium teams={teams} tallies={tallies} budget={xpBudget} canAward={canAward} classId={classId} run={run.current} played={played}
+      onAgain={() => setPhase('setup')} backUrl={backUrl} />;
+  }
 
-  return <Arena teams={teams} setTeams={setTeams} pool={pool} turnSeconds={turnSeconds} onEnd={() => setPhase('podium')} />;
+  return <Arena teams={teams} setTeams={setTeams} tallies={tallies} setTallies={setTallies} pool={pool} turnSeconds={turnSeconds}
+    onEnd={(n) => { setPlayed(n); setPhase('podium'); }} />;
 }
 
-function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; setTeams: (t: Team[]) => void; pool: Puzzle[]; turnSeconds: number; onEnd: () => void }) {
+interface ArenaProps {
+  teams: Team[]; setTeams: (t: Team[]) => void; tallies: Tallies; setTallies: (f: (t: Tallies) => Tallies) => void;
+  pool: Puzzle[]; turnSeconds: number; onEnd: (puzzlesPlayed: number) => void;
+}
+
+function Arena({ teams, setTeams, tallies, setTallies, pool, turnSeconds, onEnd }: ArenaProps) {
   const cg = useRef<Api | null>(null);
   const chess = useRef(new Chess());
-  const S = useRef({ p: 0, ply: 0, turn: 0, steal: false, locked: false, teams });
+  // `picked` lives in the ref too: onMove is registered once and would otherwise see stale state.
+  const S = useRef({ p: 0, ply: 0, turn: 0, steal: false, locked: false, teams, picked: null as Kid | null, counted: new Set<number>() });
   const [pIdx, setPIdx] = useState(0);
   const [turn, setTurn] = useState(0);
   const [steal, setSteal] = useState(false);
@@ -158,7 +246,7 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
 
   function load(i: number, t: number) {
     const s = S.current;
-    s.p = i; s.ply = 0; s.turn = t; s.steal = false; s.locked = false;
+    s.p = i; s.ply = 0; s.turn = t; s.steal = false; s.locked = false; s.picked = null; s.counted = new Set();
     setPIdx(i); setTurn(t); setSteal(false); setPicked(null);
     chess.current = new Chess(pool[i].fen);
     const color = chess.current.turn() === 'w' ? 'white' : 'black';
@@ -182,7 +270,7 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
   function nextPuzzle() {
     const s = S.current;
     clock(false);
-    if (s.p + 1 >= pool.length) { onEnd(); return; }
+    if (s.p + 1 >= pool.length) { onEnd(pool.length); return; }
     load(s.p + 1, (s.turn + (s.steal ? 0 : 1)) % S.current.teams.length);
   }
 
@@ -209,6 +297,7 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
       // Steal: the next team gets a chance (1 point)
       s.steal = true;
       s.turn = (s.turn + 1) % n;
+      s.picked = null; s.counted = new Set();
       setSteal(true); setTurn(s.turn); setPicked(null);
       const tm = S.current.teams[s.turn];
       flash(`${timeout ? '⏰ ¡Tiempo! ' : '❌ '}¡REBOTE para ${tm.emoji} ${tm.name}!`, tm.color, 1800);
@@ -243,13 +332,21 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
       s.locked = true;
       clock(false);
       syncBoard(cg.current!, chess.current, { movable: null, lastMove: toPlay });
-      const pts = s.steal ? 1 : 3;
+      const pts = s.steal ? POINTS.steal : POINTS.solve;
       const tm = S.current.teams[s.turn];
       award(s.turn, pts);
+      // Credit the kid the dice picked for this turn (if any).
+      const hero = s.picked && tm.members.some((k) => k.id === s.picked!.id) ? s.picked : null;
+      if (hero) {
+        setTallies((all) => {
+          const cur = all[hero.id] ?? EMPTY;
+          return { ...all, [hero.id]: { ...cur, solved: cur.solved + 1, points: cur.points + pts } };
+        });
+      }
       sfx.levelUp();
       burst(0.5, 0.5, 1.4);
-      flash(`✅ ¡+${pts} para ${tm.emoji} ${tm.name}!`, tm.color, 2000);
-      speak(`¡Muy bien, ${tm.name}!`);
+      flash(hero ? `✅ ¡+${pts} para ${tm.emoji} ${tm.name}! ¡Bravo, ${hero.name}!` : `✅ ¡+${pts} para ${tm.emoji} ${tm.name}!`, tm.color, 2000);
+      speak(hero ? `¡Muy bien, ${hero.name}!` : `¡Muy bien, ${tm.name}!`);
       return;
     }
     syncBoard(cg.current!, chess.current, { movable: null, lastMove: toPlay });
@@ -274,8 +371,15 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
       setRolling(m.avatar);
       sfx.tick();
       k++;
-      if (k < spins) setTimeout(step, 60 + k * 12);
-      else { setRolling(null); setPicked(m); sfx.coin(); speak(`¡Sale ${m.name}!`); }
+      if (k < spins) { setTimeout(step, 60 + k * 12); return; }
+      setRolling(null); setPicked(m); sfx.coin(); speak(`¡Sale ${m.name}!`);
+      const s = S.current;
+      s.picked = m;
+      // One pick per kid per turn, however many times the dice is rolled.
+      if (!s.counted.has(m.id)) {
+        s.counted.add(m.id);
+        setTallies((all) => ({ ...all, [m.id]: { ...(all[m.id] ?? EMPTY), picks: (all[m.id] ?? EMPTY).picks + 1 } }));
+      }
     };
     step();
   }
@@ -295,6 +399,16 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
               <span class="font-display text-3xl font-extrabold tabular-nums lg:text-5xl" style={bump === i ? 'animation: ck-pop .6s ease-out; display:inline-block' : ''}>{t.score}</span>
             </div>
             <div class="mt-2 h-3 overflow-hidden rounded-full bg-black/30"><div class="h-full rounded-full transition-all duration-700" style={{ width: `${(t.score / maxScore) * 100}%`, background: t.color }} /></div>
+            <div class="mt-2 hidden flex-wrap gap-1 lg:flex">
+              {t.members.map((m) => {
+                const k = tallies[m.id];
+                return (
+                  <span key={m.id} title={m.name} class={`inline-flex items-center gap-0.5 rounded-full px-1.5 text-xl ${picked?.id === m.id && i === turn ? 'bg-amber-400 text-amber-950' : 'bg-black/25'}`}>
+                    {m.avatar}{k?.points ? <b class="text-base">+{k.points}</b> : null}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         ))}
         <div class="hidden flex-1 lg:block" />
@@ -328,7 +442,7 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
         </div>
         <button onClick={() => { if (!s.locked) { s.locked = true; clock(false); flash('👀 Solución', '#64748b'); reveal(); } }} class="ck-btn-sm !bg-white/15 !text-white">👀 Solución</button>
         <button onClick={nextPuzzle} class="ck-btn ck-btn-orange w-full">Siguiente ▶</button>
-        <button onClick={() => { clock(false); onEnd(); }} class="text-sm font-bold text-violet-200">🏁 Terminar</button>
+        <button onClick={() => { clock(false); onEnd(S.current.p + 1); }} class="min-h-11 px-3 text-sm font-bold text-violet-200">🏁 Terminar</button>
       </aside>
 
       {banner && (
@@ -340,9 +454,22 @@ function Arena({ teams, setTeams, pool, turnSeconds, onEnd }: { teams: Team[]; s
   );
 }
 
-function Podium({ teams, onAgain, backUrl }: { teams: Team[]; onAgain: () => void; backUrl: string }) {
+interface PodiumProps {
+  teams: Team[]; tallies: Tallies; budget: number; canAward: boolean; classId: number;
+  run: { nonce: string; startedAt: number }; played: number; onAgain: () => void; backUrl: string;
+}
+
+type SaveState = { state: 'idle' | 'saving' | 'done' | 'error'; msg?: string; xp?: Map<number, number>; stickers?: number };
+
+function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgain, backUrl }: PodiumProps) {
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const tie = sorted.length > 1 && sorted[0].score === sorted[1].score;
+  const kids: KidTally[] = teams.flatMap((t, i) => t.members.map((m) => ({ studentId: m.id, team: i, ...(tallies[m.id] ?? EMPTY) })));
+  const preview = new Map(distributeXp(budget, teams.map((t) => t.score), kids).map((x) => [x.studentId, x.total]));
+  const [save, setSave] = useState<SaveState>({ state: 'idle' });
+  const canSave = canAward && kids.length > 0;
+  const unsaved = canSave && save.state !== 'done';
+
   useEffect(() => {
     sfx.fanfare();
     setTimeout(() => sfx.levelUp(), 700);
@@ -350,28 +477,110 @@ function Podium({ teams, onAgain, backUrl }: { teams: Team[]; onAgain: () => voi
     setTimeout(sideCannons, 1200);
     speak(tie ? '¡Empate! ¡Todos sois campeones!' : `¡Ganan los ${sorted[0].name}!`);
   }, []);
-  const heights = ['h-64', 'h-48', 'h-36', 'h-28'];
+
+  async function saveResults() {
+    setSave({ state: 'saving' });
+    try {
+      const res = await fetch('/api/coach/projector', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          classId, nonce: run.nonce, xpBudget: budget, puzzlesPlayed: played,
+          seconds: Math.round((Date.now() - run.startedAt) / 1000),
+          teams: teams.map(({ name, emoji, color, score }) => ({ name, emoji, color, score })), kids,
+        }),
+      });
+      const data: { error?: string; results: { studentId: number; total: number }[]; newStickers?: Record<number, string[]> } = await res.json();
+      if (!res.ok) { setSave({ state: 'error', msg: data.error ?? 'No se pudo guardar' }); return; }
+      const xp = new Map(data.results.map((r) => [r.studentId, r.total]));
+      const stickers = Object.values(data.newStickers ?? {}).reduce((n, l) => n + l.length, 0);
+      setSave({ state: 'done', xp, stickers });
+      sfx.coin();
+      setTimeout(() => sfx.levelUp(), 300);
+      sideCannons();
+      speak(budget ? '¡XP repartido! ¡Enhorabuena a todos!' : '¡Resultado guardado!');
+    } catch {
+      setSave({ state: 'error', msg: 'Sin conexión. Inténtalo otra vez.' });
+    }
+  }
+
+  function again() {
+    if (unsaved && !confirm(budget ? '¿Seguro? Todavía no has repartido el XP de este torneo.' : '¿Seguir sin guardar el resultado?')) return;
+    onAgain();
+  }
+
+  const heights = ['h-48', 'h-36', 'h-28', 'h-20'];
   const order = sorted.length >= 3 ? [1, 0, 2, 3].filter((i) => i < sorted.length) : sorted.map((_, i) => i);
+  const xpOf = (id: number) => save.xp?.get(id) ?? preview.get(id) ?? 0;
   return (
-    <div class="ck-projector flex min-h-dvh flex-col items-center justify-center p-6">
-      <Mascot mood="party" size={120} />
-      <h1 class="font-display text-6xl font-extrabold">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
-      <div class="mt-10 flex items-end gap-4">
+    <div class="ck-projector flex min-h-dvh flex-col items-center p-6">
+      <Mascot mood="party" size={100} />
+      <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
+      <div class="mt-8 flex items-end gap-4">
         {order.map((i) => {
           const t = sorted[i];
+          const place = sorted.findIndex((x) => x.score === t.score); // ties share a step
           return (
-            <div key={t.name} class="flex w-36 flex-col items-center md:w-48">
-              <span class="text-6xl">{t.emoji}</span>
+            <div key={t.name} class="flex w-32 flex-col items-center md:w-44">
+              <span class="text-5xl">{t.emoji}</span>
               <span class="font-display text-2xl font-extrabold">{t.name}</span>
-              <span class="text-3xl">{['🥇', '🥈', '🥉', '🎖️'][i]}</span>
-              <div class={`mt-2 flex w-full items-start justify-center rounded-t-3xl pt-4 font-display text-5xl font-extrabold ${heights[i]}`} style={{ background: t.color, animation: `ck-rise .6s ${0.2 * (3 - i)}s both` }}>{t.score}</div>
+              <span class="text-3xl">{['🥇', '🥈', '🥉', '🎖️'][place]}</span>
+              <div class={`mt-2 flex w-full items-start justify-center rounded-t-3xl pt-3 font-display text-5xl font-extrabold ${heights[place]}`} style={{ background: t.color, animation: `ck-rise .6s ${0.2 * (3 - i)}s both` }}>{t.score}</div>
             </div>
           );
         })}
       </div>
-      <div class="mt-10 flex gap-4">
-        <button onClick={onAgain} class="ck-btn ck-btn-orange">↺ Otra ronda</button>
-        <a href={backUrl} class="ck-btn bg-white/20 text-white">Salir</a>
+
+      {kids.length > 0 && (
+        <div class="mt-8 w-full max-w-6xl">
+          <h2 class="text-center font-display text-3xl font-extrabold">📋 ¿Qué hizo cada uno?</h2>
+          <p class="mt-1 text-center text-lg text-violet-100">🎲 veces que salió con el dado · ✅ problemas resueltos</p>
+          <div class="mt-4 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+            {sorted.map((t) => (
+              <div key={t.name} class="rounded-3xl p-4" style={{ background: `${t.color}33`, border: `3px solid ${t.color}` }}>
+                <p class="font-display text-xl font-extrabold">{t.emoji} {t.name} · {t.score} pts</p>
+                <ul class="mt-2 space-y-1">
+                  {[...t.members].sort((a, b) => xpOf(b.id) - xpOf(a.id)).map((m) => {
+                    const k = tallies[m.id] ?? EMPTY;
+                    return (
+                      <li key={m.id} class="flex items-center gap-2 rounded-2xl bg-black/20 px-3 py-2 text-lg">
+                        <span class="text-2xl">{m.avatar}</span>
+                        <span class="flex-1 truncate font-bold">{m.name}</span>
+                        <span title="Veces que salió con el dado">🎲 {k.picks}</span>
+                        <span title="Problemas resueltos">✅ {k.solved}</span>
+                        {budget > 0 && canAward && (
+                          <span class={`rounded-full px-2 font-display font-extrabold ${save.state === 'done' ? 'bg-amber-400 text-amber-950' : 'bg-white/20'}`} style={save.state === 'done' ? 'animation: ck-pop .5s ease-out' : ''}>
+                            {save.state === 'done' ? `+${xpOf(m.id)} XP ✅` : `≈ +${xpOf(m.id)} XP`}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {!t.members.length && <li class="text-sm opacity-80">Sin alumnos</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div class="mt-8 flex flex-col items-center gap-3">
+        {unsaved && (
+          <button onClick={saveResults} disabled={save.state === 'saving'} class="ck-btn ck-btn-orange px-10 py-5 text-2xl">
+            {save.state === 'saving' ? 'Guardando…' : budget ? '🎁 Repartir el XP' : '💾 Guardar resultado'}
+          </button>
+        )}
+        {save.state === 'done' && (
+          <p class="rounded-2xl bg-emerald-500/30 px-5 py-3 text-xl font-bold">
+            {budget ? '✅ ¡XP repartido!' : '✅ Resultado guardado'}
+            {save.stickers ? ` · 🎉 ${save.stickers} ${save.stickers > 1 ? 'cromos nuevos' : 'cromo nuevo'}` : ''}
+          </p>
+        )}
+        {save.state === 'error' && <p class="rounded-2xl bg-white/15 px-4 py-2 font-bold">😕 {save.msg}</p>}
+        <div class="flex gap-4">
+          <button onClick={again} class="ck-btn bg-white/20 text-white">↺ Otra ronda</button>
+          <a href={backUrl} onClick={(e) => { if (unsaved && !confirm('¿Salir sin guardar el torneo?')) e.preventDefault(); }} class="ck-btn bg-white/20 text-white">Salir</a>
+        </div>
       </div>
     </div>
   );

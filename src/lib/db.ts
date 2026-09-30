@@ -93,8 +93,8 @@ export async function forkActivity(
   return row!.id;
 }
 
-export async function studentStats(db: D1Database, s: StudentRow): Promise<Stats> {
-  const r = await db.prepare(
+function statsQuery(db: D1Database, studentId: number) {
+  return db.prepare(
     `SELECT
        SUM(CASE WHEN at.stars = 3 THEN 1 ELSE 0 END) AS three,
        SUM(CASE WHEN a.type = 'pgn-lesson' THEN 1 ELSE 0 END) AS lessons,
@@ -102,12 +102,28 @@ export async function studentStats(db: D1Database, s: StudentRow): Promise<Stats
        SUM(CASE WHEN a.type = 'puzzle-blitz' THEN 1 ELSE 0 END) AS blitz,
        COUNT(DISTINCT at.assignment_id) AS homework
      FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ?`,
-  ).bind(s.id).first<{ three: number; lessons: number; fruit: number; blitz: number; homework: number }>();
+  ).bind(studentId);
+}
+
+export type StatsAgg = { three: number; lessons: number; fruit: number; blitz: number; homework: number } | null | undefined;
+
+export function toStats(s: StudentRow, r: StatsAgg): Stats {
   return {
     xp: s.xp, streak: s.streak, puzzlesSolved: s.puzzles_solved, gamesCompleted: s.games_completed,
     totalSeconds: s.total_seconds, threeStars: r?.three ?? 0, lessonsDone: r?.lessons ?? 0,
     fruitPerfect: r?.fruit ?? 0, blitzDone: r?.blitz ?? 0, homeworkDone: r?.homework ?? 0,
   };
+}
+
+export async function studentStats(db: D1Database, s: StudentRow): Promise<Stats> {
+  return toStats(s, await statsQuery(db, s.id).first<NonNullable<StatsAgg>>());
+}
+
+/** Attempt aggregates for several students in one round trip (combine with `toStats`). */
+export async function attemptAggregates(db: D1Database, ids: number[]): Promise<Map<number, StatsAgg>> {
+  if (!ids.length) return new Map();
+  const res = await db.batch<NonNullable<StatsAgg>>(ids.map((id) => statsQuery(db, id)));
+  return new Map(ids.map((id, i) => [id, res[i].results[0]]));
 }
 
 export interface Mission {
@@ -134,16 +150,20 @@ export async function studentMissions(db: D1Database, studentId: number, classId
 export async function weeklyLeaderboard(db: D1Database, classId: number) {
   const ws = weekStart(new Date());
   const { results } = await db.prepare(
-    `SELECT s.id, s.display_name, s.avatar, COALESCE(SUM(at.xp_earned), 0) AS week_xp
-     FROM students s LEFT JOIN attempts at ON at.student_id = s.id AND at.day >= ?
-     WHERE s.class_id = ? AND s.archived = 0 GROUP BY s.id ORDER BY week_xp DESC, s.display_name`,
-  ).bind(ws, classId).all<{ id: number; display_name: string; avatar: string; week_xp: number }>();
+    `SELECT s.id, s.display_name, s.avatar,
+       COALESCE((SELECT SUM(at.xp_earned) FROM attempts at WHERE at.student_id = s.id AND at.day >= ?), 0)
+       + COALESCE((SELECT SUM(pr.xp_earned) FROM projector_results pr WHERE pr.student_id = s.id AND pr.day >= ?), 0) AS week_xp
+     FROM students s WHERE s.class_id = ? AND s.archived = 0 ORDER BY week_xp DESC, s.display_name`,
+  ).bind(ws, ws, classId).all<{ id: number; display_name: string; avatar: string; week_xp: number }>();
   return results;
 }
 
 export async function xpToday(db: D1Database, studentId: number): Promise<number> {
-  const r = await db.prepare('SELECT COALESCE(SUM(xp_earned), 0) AS x FROM attempts WHERE student_id = ? AND day = ?')
-    .bind(studentId, today()).first<{ x: number }>();
+  const d = today();
+  const r = await db.prepare(
+    `SELECT COALESCE((SELECT SUM(xp_earned) FROM attempts WHERE student_id = ? AND day = ?), 0)
+       + COALESCE((SELECT SUM(xp_earned) FROM projector_results WHERE student_id = ? AND day = ?), 0) AS x`,
+  ).bind(studentId, d, studentId, d).first<{ x: number }>();
   return r?.x ?? 0;
 }
 

@@ -15,5 +15,5 @@ const { results: acts } = await db.prepare(
 const sources = acts.map((a) => ({ id: a.id, title: a.title, type: a.type, puzzles: JSON.parse(a.content_json).puzzles ?? [] })).filter((s) => s.puzzles.length);
 ---
 <Base title={`Proyector · ${cls.name}`}>
-  <Projector client:only="preact" className={cls.name} students={students} sources={sources} backUrl={`/profe/clase/${id}`} />
+  <Projector client:only="preact" classId={id} canAward={!!(perm.is_owner || perm.can_manage_students)} className={cls.name} students={students} sources={sources} backUrl={`/profe/clase/${id}`} />
 </Base>

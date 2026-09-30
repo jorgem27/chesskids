@@ -15,7 +15,7 @@ import type { Shape } from './parser';
 const toCg = (shapes: Shape[]): DrawShape[] =>
   shapes.map((s) => ({ orig: s.orig as Key, dest: s.dest as Key | undefined, brush: s.brush }));
 
-export function LessonPlayer({ content, api }: PlayerProps<LessonContent>) {
+export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>) {
   const lesson = useMemo(() => compileLesson(content.pgn, content.questions), [content.pgn, content.questions]);
   const cg = useRef<Api | null>(null);
   const chess = useRef(new Chess(lesson.startFen));
@@ -163,7 +163,7 @@ export function LessonPlayer({ content, api }: PlayerProps<LessonContent>) {
   return (
     <div class="flex w-full flex-col items-center gap-3">
       <div class="flex w-full max-w-[min(92vw,66vh)] items-center justify-between text-sm font-bold text-slate-500">
-        <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">📖 {lesson.title}</span>
+        <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">📖 {title || lesson.title}</span>
         <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">❓ {answered} / {questions}</span>
       </div>
       <div class="w-full max-w-[min(92vw,66vh)]">

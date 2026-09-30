@@ -94,3 +94,18 @@ export async function recordFailure(db: D1Database, key: string) {
 export async function clearFailures(db: D1Database, key: string) {
   await db.prepare('DELETE FROM login_failures WHERE key = ?').bind(key).run();
 }
+
+// ---------- Coach password re-check (for destructive actions) ----------
+
+/** Returns null when the password is right, otherwise a Spanish error message. Shares the brute-force lockout. */
+export async function checkCoachPassword(db: D1Database, coachId: number, password: unknown): Promise<string | null> {
+  const key = `coach-confirm:${coachId}`;
+  if (await isLocked(db, key)) return 'Demasiados intentos. Espera unos minutos.';
+  const row = await db.prepare('SELECT password_hash FROM coaches WHERE id = ?').bind(coachId).first<{ password_hash: string }>();
+  if (!row || typeof password !== 'string' || !password || !(await verifySecret(password, row.password_hash))) {
+    await recordFailure(db, key);
+    return 'Contraseña incorrecta';
+  }
+  await clearFailures(db, key);
+  return null;
+}
