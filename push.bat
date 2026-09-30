@@ -28,9 +28,9 @@ git add -A
 
 :: Check if there are changes to commit
 git diff --cached --quiet
-if %ERRORLEVEL% neq 0 (
+if errorlevel 1 (
     git commit -m "!COMMIT_MSG!"
-    if %ERRORLEVEL% neq 0 (
+    if errorlevel 1 (
         echo [ERROR] Git commit failed.
         pause
         exit /b 1
@@ -42,7 +42,7 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo [2/3] Pushing to GitHub (origin main)...
 git push origin main
-if %ERRORLEVEL% neq 0 (
+if errorlevel 1 (
     echo [ERROR] Failed to push to origin main!
     pause
     exit /b 1
@@ -53,7 +53,7 @@ echo [OK] Code successfully pushed to main branch.
 echo.
 echo [3/3] Pushing database migrations to remote Cloudflare D1...
 call npm run db:migrate:remote
-if %ERRORLEVEL% neq 0 (
+if errorlevel 1 (
     echo.
     echo [WARNING] Remote database migration did not finish successfully or was cancelled.
     echo Please verify you are logged in to Cloudflare with: npx wrangler login
