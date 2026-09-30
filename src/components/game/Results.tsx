@@ -3,7 +3,7 @@ import type { GameResult } from '../../games/types';
 import { burst, cheer, emojiRain, sideCannons, starShower } from '../../lib/fx';
 import { KINGDOMS, stickerById, type XpBreakdown } from '../../lib/rewards';
 import { sfx, vibrate } from '../../lib/sfx';
-import { Mascot } from '../ui/Mascot';
+import { Potroculo } from '../ui/Potroculo';
 
 export interface RewardResponse {
   xp: XpBreakdown;
@@ -75,7 +75,7 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
     <div class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-violet-600 via-fuchsia-500 to-amber-400 px-5 py-10 text-white">
       <div class="pointer-events-none absolute inset-0 opacity-20" style="background: repeating-conic-gradient(from 0deg at 50% 40%, #fff 0 10deg, transparent 10deg 20deg); animation: ck-spin-slow 40s linear infinite" />
       <div class="relative flex flex-col items-center">
-        <div class="animate-[ck-wiggle_.6s_ease-in-out_3]"><Mascot mood="party" size={130} /></div>
+        <div><Potroculo mood="party" size={130} /></div>
         <h1 class="ck-rise font-display text-5xl font-extrabold drop-shadow-lg md:text-7xl">{title}</h1>
 
         <div class="mt-4 flex gap-3">

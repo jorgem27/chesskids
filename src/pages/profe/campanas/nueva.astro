@@ -16,11 +16,19 @@ if (Astro.request.method === 'POST') {
   const reward_type = data.get('reward_type') as string;
   
   if (title && reward_type) {
-    const { results } = await db.prepare(
-      'INSERT INTO campaigns (club_id, created_by, title, description, reward_type) VALUES (?, ?, ?, ?, ?) RETURNING id'
-    ).bind(clubId, coach.id, title, description, reward_type).all<{id: number}>();
-    
-    return Astro.redirect(`/profe/campanas/${results[0].id}`);
+    try {
+      const row = await db.prepare(
+        'INSERT INTO campaigns (club_id, created_by, title, description, reward_type) VALUES (?, ?, ?, ?, ?) RETURNING id'
+      ).bind(clubId, coach.id, title, description || '', reward_type).first<{id: number}>();
+      
+      if (row) {
+        return Astro.redirect(`/profe/campanas/${row.id}`);
+      }
+    } catch (err) {
+      console.error('Error creating campaign:', err);
+      // Fallback redirect or error handling
+      return Astro.redirect('/profe/campanas?error=create_failed');
+    }
   }
 }
 ---

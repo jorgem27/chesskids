@@ -9,7 +9,7 @@ import { applyUci, isCorrectMove, type Puzzle } from '../../games/puzzle/logic';
 import { burst, cheer, sideCannons } from '../../lib/fx';
 import { distributeXp, fmtPoints, kidPoints, POINTS, XP_BUDGETS, type KidTally } from '../../lib/projector';
 import { sfx } from '../../lib/sfx';
-import { Potroculo as Mascot } from '../ui/Potroculo';
+import { Potroculo } from '../ui/Potroculo';
 
 interface Kid { id: number; name: string; avatar: string }
 interface Source { id: number; title: string; type: string; puzzles: Puzzle[] }
@@ -109,7 +109,7 @@ export default function Projector({ classId, className, students, sources, backU
         <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
         <div class="mx-auto max-w-6xl">
           <div class="flex items-center gap-4">
-            <Mascot mood="party" size={90} />
+            <Potroculo mood="party" size={90} />
             <div>
               <h1 class="font-display text-5xl font-extrabold">📽️ Modo proyector</h1>
               <p class="text-xl text-violet-200">{className} · ¡Equipos contra equipos!</p>
@@ -527,7 +527,7 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
   const xpOf = (id: number) => save.xp?.get(id) ?? preview.get(id) ?? 0;
   return (
     <div class="ck-projector flex min-h-dvh flex-col items-center p-6">
-      <Mascot mood="party" size={100} />
+      <Potroculo mood="party" size={100} />
       <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
       <div class="mt-8 flex items-end gap-4">
         {order.map((i) => {

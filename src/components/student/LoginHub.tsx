@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getRecent, type RecentProfile } from '../../lib/recent';
 import { sfx } from '../../lib/sfx';
-import { Mascot } from '../ui/Mascot';
+import { Potroculo } from '../ui/Potroculo';
 
 type View = 'home' | 'code' | 'password' | 'scan';
 
@@ -40,7 +40,7 @@ export default function LoginHub({ error }: { error?: string | null }) {
   return (
     <div class="flex min-h-dvh flex-col items-center bg-gradient-to-b from-violet-200 via-fuchsia-100 to-amber-100 px-4 py-8">
       <a href="/" class="self-start text-sm font-bold text-violet-700">← Inicio</a>
-      <div class="ck-float"><Mascot size={110} mood="happy" /></div>
+      <div><Potroculo size={110} mood="wave" /></div>
       <h1 class="mt-2 text-center font-display text-4xl font-extrabold text-violet-800">¡Hola, campeón!</h1>
       <p class="mb-6 text-center font-bold text-slate-600">¿Cómo quieres entrar?</p>
       {msg && <p class="mb-4 w-full max-w-md rounded-2xl bg-rose-100 p-3 text-center font-bold text-rose-700">{msg}</p>}

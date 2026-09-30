@@ -5,6 +5,7 @@
 import { audioContext, isMuted } from '../sfx';
 import { COACHES, coachById, coachTemplates, type Coach } from './coaches';
 import { BANKS, cleanForSpeech, clipId, pickFresh, render, type Cue, type Vars } from './phrases';
+import { setTalking, stopTalking, talkLater } from './talking';
 
 /** A coach id, 'random' (one coach per browser session) or 'none' (sounds only, no voice). */
 export type CoachPref = string;
@@ -96,6 +97,7 @@ let playingEnds = 0; // AudioContext time when the current clip ends
 const buffers = new Map<string, Promise<AudioBuffer>>();
 
 function stop() {
+  stopTalking();
   try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
   try { playing?.stop(); } catch { /* ignore */ }
   playing = null;
@@ -127,6 +129,7 @@ async function playClip(coach: Coach, m: Manifest, id: string, my: number, queue
   src.start(at);
   playing = src;
   playingEnds = at + buf.duration;
+  talkLater((at - ctx.currentTime) * 1000, buf.duration * 1000);
 }
 
 /** Say any text with the current coach's voice (clip if recorded, browser voice otherwise). */
@@ -175,6 +178,8 @@ function webSpeak(text: string, coach: Coach) {
     if (v) u.voice = v;
     u.rate = coach.web.rate;
     u.pitch = coach.web.pitch;
+    u.onstart = () => setTalking(true);
+    u.onend = u.onerror = () => setTalking(false);
     ss.speak(u);
   } catch { /* ignore */ }
 }

@@ -1,0 +1,139 @@
+/* Potróculo puppet rig. Pivots are in SVG user units (viewBox 0 0 200 240). */
+.pt .pt-all   { transform-origin: 100px 228px; animation: pt-breathe 2.6s ease-in-out infinite; }
+.pt .pt-head  { transform-origin: 100px 126px; transition: transform .3s; }
+.pt .pt-hat   { transform-origin: 100px 56px; transition: transform .3s; }
+.pt .pt-ear-l { transform-origin: 78px 55px; transition: transform .3s; }
+.pt .pt-ear-r { transform-origin: 122px 55px; transition: transform .3s; }
+.pt .pt-tail  { transform-origin: 118px 178px; animation: pt-swish 2.8s ease-in-out infinite; }
+.pt .pt-leg-l { transform-origin: 90px 178px; }
+.pt .pt-leg-r { transform-origin: 110px 178px; }
+.pt .pt-arm-l { transform-origin: 83px 142px; transition: transform .3s; }
+.pt .pt-fore-l { transform-origin: 66px 152px; transition: transform .3s; }
+.pt .pt-arm-r { transform-origin: 117px 142px; transition: transform .3s; }
+.pt .pt-fore-r { transform-origin: 134px 158px; transition: transform .3s; }
+.pt .pt-eye   { transform-box: fill-box; transform-origin: center; animation: pt-blink 4.3s infinite; }
+.pt .pt-eye-r { animation-delay: .02s; }
+.pt .pt-stache { transform-box: fill-box; transform-origin: center bottom; }
+.pt .pt-talkmouth { transform-box: fill-box; transform-origin: center top; }
+
+.pt .pt-speed, .pt .pt-steam, .pt .pt-vein, .pt .pt-tear { display: none; }
+
+/* ---------- happy (default) ---------- */
+.pt-m-happy .pt-head { animation: pt-tilt 3.2s ease-in-out infinite; }
+.pt-m-happy .pt-fore-l { animation: pt-pawn-show 3.2s ease-in-out infinite; }
+
+/* ---------- party / dance ---------- */
+.pt-m-party .pt-all, .pt-m-dance .pt-all { animation: pt-dance .6s ease-in-out infinite; }
+.pt-m-party .pt-head, .pt-m-dance .pt-head { animation: pt-head-bop .6s ease-in-out infinite; }
+.pt-m-party .pt-hat, .pt-m-dance .pt-hat { animation: pt-hat-hop .6s ease-in-out infinite; }
+.pt-m-party .pt-arm-r, .pt-m-dance .pt-arm-r { transform: rotate(-113deg); animation: pt-arm-r-up .6s ease-in-out infinite; }
+.pt-m-party .pt-fore-r, .pt-m-dance .pt-fore-r { transform: rotate(-110deg); }
+.pt-m-party .pt-arm-l, .pt-m-dance .pt-arm-l { transform: rotate(60deg); animation: pt-arm-l-up .6s ease-in-out infinite; }
+.pt-m-party .pt-fore-l, .pt-m-dance .pt-fore-l { transform: rotate(-44deg); }
+.pt-m-party .pt-leg-l, .pt-m-dance .pt-leg-l { animation: pt-kick-l .6s ease-in-out infinite; }
+.pt-m-party .pt-leg-r, .pt-m-dance .pt-leg-r { animation: pt-kick-r .6s ease-in-out infinite; }
+.pt-m-party .pt-tail, .pt-m-dance .pt-tail { animation: pt-swish .3s ease-in-out infinite; }
+.pt .pt-notes { animation: pt-notes 1.2s ease-out infinite; }
+
+/* ---------- wave ---------- */
+.pt-m-wave .pt-arm-r { transform: rotate(-103deg); }
+.pt-m-wave .pt-fore-r { animation: pt-wave .5s ease-in-out infinite alternate; }
+.pt-m-wave .pt-head { transform: rotate(-4deg); }
+
+/* ---------- run ---------- */
+.pt-m-run .pt-all { animation: pt-run-bob .3s ease-in-out infinite; }
+.pt-m-run .pt-leg-l { animation: pt-stride .6s ease-in-out infinite; }
+.pt-m-run .pt-leg-r { animation: pt-stride .6s ease-in-out infinite reverse; }
+.pt-m-run .pt-arm-r { animation: pt-arm-swing-r .6s ease-in-out infinite; }
+.pt-m-run .pt-arm-l { animation: pt-arm-swing-l .6s ease-in-out infinite; }
+.pt-m-run .pt-tail { transform: rotate(-22deg); animation: pt-flutter .15s ease-in-out infinite alternate; }
+.pt-m-run .pt-ear-l, .pt-m-run .pt-ear-r { transform: rotate(8deg); }
+.pt-m-run .pt-hat { transform: rotate(5deg) translate(2px, 1px); }
+.pt-m-run .pt-speed { display: inline; animation: pt-speed .3s linear infinite; }
+.pt-m-run .pt-shadow { animation: pt-shadow .3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* ---------- angry ---------- */
+.pt-m-angry .pt-all { animation: pt-shake .14s linear infinite; }
+.pt-m-angry .pt-rage { animation: pt-rage 1s ease-in-out infinite; }
+.pt-m-angry .pt-ear-l { transform: rotate(-28deg); }
+.pt-m-angry .pt-ear-r { transform: rotate(28deg); }
+.pt-m-angry .pt-arm-r { transform: rotate(-53deg); animation: pt-fist-r .35s ease-in-out infinite alternate; }
+.pt-m-angry .pt-fore-r { transform: rotate(-160deg); }
+.pt-m-angry .pt-leg-r { animation: pt-stomp .5s ease-in infinite; }
+.pt-m-angry .pt-steam { display: inline; }
+.pt-m-angry .pt-steam circle { animation: pt-steam 1s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.pt-m-angry .pt-steam circle + circle { animation-delay: .5s; }
+.pt-m-angry .pt-vein { display: inline; animation: pt-pulse .5s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+.pt-m-angry .pt-blush { display: none; }
+.pt-m-angry .pt-stache { transform: rotate(0) scaleY(.85); }
+
+/* ---------- sad ---------- */
+.pt-m-sad .pt-all { animation: pt-breathe 3.6s ease-in-out infinite; }
+.pt-m-sad .pt-head { transform: rotate(7deg) translateY(3px); }
+.pt-m-sad .pt-hat { transform: rotate(-4deg) translateY(4px); }
+.pt-m-sad .pt-ear-l { transform: rotate(-35deg); }
+.pt-m-sad .pt-ear-r { transform: rotate(35deg); }
+.pt-m-sad .pt-arm-r { transform: rotate(42deg); }
+.pt-m-sad .pt-fore-r { transform: rotate(-70deg); }
+.pt-m-sad .pt-arm-l { transform: rotate(-50deg); }
+.pt-m-sad .pt-fore-l { transform: rotate(-54deg); }
+.pt-m-sad .pt-tail { animation: none; transform: rotate(22deg); }
+.pt-m-sad .pt-tear { display: inline; animation: pt-tear 1.6s ease-in infinite; }
+.pt-m-sad .pt-blush { display: none; }
+
+/* ---------- wow ---------- */
+.pt-m-wow .pt-all { animation: pt-jump .55s cubic-bezier(.3,1.6,.5,1) 1, pt-breathe 2.6s ease-in-out .55s infinite; }
+.pt-m-wow .pt-hat { transform: translateY(-9px) rotate(-6deg); }
+.pt-m-wow .pt-ear-l { transform: rotate(-10deg); }
+.pt-m-wow .pt-ear-r { transform: rotate(10deg); }
+.pt-m-wow .pt-arm-r { transform: rotate(-83deg); }
+.pt-m-wow .pt-fore-r { transform: rotate(-150deg); }
+
+/* ---------- think ---------- */
+.pt-m-think .pt-head { transform: rotate(-7deg); }
+.pt-m-think .pt-arm-r { transform: rotate(17deg); }
+.pt-m-think .pt-fore-r { transform: rotate(92deg); }
+.pt-m-think .pt-leg-r { animation: pt-tap .7s ease-in-out infinite; }
+.pt-m-think .pt-ear-r { transform: rotate(12deg); }
+
+/* ---------- talking (lip sync with the coach voice) ---------- */
+.pt-talk .pt-talkmouth { animation: pt-lips .42s steps(1, end) infinite; }
+.pt-talk .pt-stache { animation: pt-stache .42s steps(1, end) infinite; }
+
+@keyframes pt-breathe { 0%,100% { transform: translateY(0) scaleY(1) } 50% { transform: translateY(-1.5px) scaleY(1.012) } }
+@keyframes pt-blink { 0%,94%,100% { transform: scaleY(1) } 96% { transform: scaleY(.08) } }
+@keyframes pt-swish { 0%,100% { transform: rotate(-5deg) } 50% { transform: rotate(9deg) } }
+@keyframes pt-tilt { 0%,100% { transform: rotate(0) } 30% { transform: rotate(-3deg) } 70% { transform: rotate(2deg) } }
+@keyframes pt-pawn-show { 0%,60%,100% { transform: rotate(0) } 75% { transform: rotate(-10deg) } 88% { transform: rotate(4deg) } }
+@keyframes pt-dance { 0%,100% { transform: translateY(0) rotate(-6deg) } 25% { transform: translateY(-9px) rotate(0) } 50% { transform: translateY(0) rotate(6deg) } 75% { transform: translateY(-9px) rotate(0) } }
+@keyframes pt-head-bop { 0%,50%,100% { transform: rotate(0) } 25% { transform: rotate(-8deg) } 75% { transform: rotate(8deg) } }
+@keyframes pt-hat-hop { 0%,50%,100% { transform: translateY(0) } 25%,75% { transform: translateY(-5px) rotate(4deg) } }
+@keyframes pt-arm-r-up { 0%,100% { transform: rotate(-113deg) } 50% { transform: rotate(-88deg) } }
+@keyframes pt-arm-l-up { 0%,100% { transform: rotate(60deg) } 50% { transform: rotate(38deg) } }
+@keyframes pt-kick-l { 0%,50%,100% { transform: rotate(0) } 25% { transform: rotate(22deg) translateY(-4px) } }
+@keyframes pt-kick-r { 0%,50%,100% { transform: rotate(0) } 75% { transform: rotate(-22deg) translateY(-4px) } }
+@keyframes pt-notes { 0% { transform: translateY(6px); opacity: 0 } 30% { opacity: 1 } 100% { transform: translateY(-14px); opacity: 0 } }
+@keyframes pt-wave { from { transform: rotate(-140deg) } to { transform: rotate(-95deg) } }
+@keyframes pt-run-bob { 0%,100% { transform: translateY(0) rotate(-8deg) } 50% { transform: translateY(-6px) rotate(-8deg) } }
+@keyframes pt-stride { 0%,100% { transform: rotate(32deg) } 50% { transform: rotate(-32deg) translateY(-3px) } }
+@keyframes pt-arm-swing-r { 0%,100% { transform: rotate(-40deg) } 50% { transform: rotate(30deg) } }
+@keyframes pt-arm-swing-l { 0%,100% { transform: rotate(-30deg) } 50% { transform: rotate(25deg) } }
+@keyframes pt-flutter { from { transform: rotate(-26deg) } to { transform: rotate(-14deg) } }
+@keyframes pt-speed { from { transform: translateX(-6px); opacity: 1 } to { transform: translateX(14px); opacity: .2 } }
+@keyframes pt-shadow { 0%,100% { transform: scaleX(1) } 50% { transform: scaleX(.8) } }
+@keyframes pt-shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-2px) rotate(-1deg) } 75% { transform: translateX(2px) rotate(1deg) } }
+@keyframes pt-rage { 0%,100% { opacity: .12 } 50% { opacity: .32 } }
+@keyframes pt-fist-r { from { transform: rotate(-50deg) } to { transform: rotate(-68deg) } }
+@keyframes pt-stomp { 0%,100% { transform: translateY(0) } 40% { transform: translateY(-9px) rotate(-6deg) } 55% { transform: translateY(0) } }
+@keyframes pt-steam { 0% { transform: translateY(8px) scale(.4); opacity: 0 } 30% { opacity: 1 } 100% { transform: translateY(-14px) scale(1.5); opacity: 0 } }
+@keyframes pt-pulse { from { transform: scale(.85) } to { transform: scale(1.15) } }
+@keyframes pt-tear { 0% { transform: translateY(0); opacity: 0 } 15% { opacity: 1 } 100% { transform: translateY(22px); opacity: 0 } }
+@keyframes pt-jump { 0% { transform: translateY(0) scale(1.05, .92) } 45% { transform: translateY(-18px) scale(.96, 1.05) } 100% { transform: translateY(0) } }
+@keyframes pt-tap { 0%,100% { transform: rotate(0) } 50% { transform: rotate(-10deg) translateY(-3px) } }
+/* Irregular open/close so it reads as speech rather than a metronome */
+@keyframes pt-lips { 0% { transform: scale(1, 1) } 20% { transform: scale(.8, .35) } 38% { transform: scale(1.05, .8) } 55% { transform: scale(.7, .2) } 72% { transform: scale(.95, 1.1) } 88% { transform: scale(.85, .5) } }
+@keyframes pt-stache { 0% { transform: translateY(0) } 20% { transform: translateY(1.5px) } 38% { transform: translateY(0) } 55% { transform: translateY(1.5px) } 72% { transform: translateY(-.5px) } 88% { transform: translateY(1px) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pt *, .pt .pt-all { animation: none !important; transition: none !important; }
+}

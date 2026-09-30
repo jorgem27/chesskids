@@ -5,7 +5,7 @@ import type { AgeGroup } from '../../lib/catalog';
 import { burst, cheer, line, speak } from '../../lib/fx';
 import { starsFor } from '../../lib/rewards';
 import { isMuted, setMuted, sfx, vibrate } from '../../lib/sfx';
-import { Mascot, type Mood } from '../ui/Mascot';
+import { Potroculo, type Mood } from '../ui/Potroculo';
 import { Results, type RewardResponse } from './Results';
 
 export interface PlayerActivity { id: number; type: string; title: string; content: any }
@@ -199,8 +199,8 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
       <main class="flex flex-1 flex-col items-center gap-3 px-3 pb-28 md:flex-row md:items-center md:justify-center md:gap-10 md:px-8">
         {/* Mascot + bubble */}
         <div class="flex w-full max-w-[min(92vw,66vh)] items-end gap-2 md:w-72 md:max-w-none md:flex-col md:items-center">
-          <div class={mood === 'party' ? 'animate-[ck-wiggle_.5s_ease-in-out_2]' : 'ck-float'}>
-            <Mascot mood={mood} size={ageGroup === 'peque' ? 86 : 72} class="md:!w-40 md:!h-auto" />
+          <div class="shrink-0">
+            <Potroculo mood={mood} size={ageGroup === 'peque' ? 86 : 72} class="md:!w-40 md:!h-auto" />
           </div>
           {bubble && (
             <div key={bubble} class="ck-rise relative mb-3 flex-1 rounded-2xl border-2 border-violet-200 bg-white px-4 py-3 font-bold text-slate-700 shadow-sm md:mb-0 md:w-full md:text-lg">
@@ -216,7 +216,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
 
       {phase === 'saving' && (
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-white/70 backdrop-blur">
-          <div class="text-center"><div class="animate-bounce text-7xl">🏆</div><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
+          <div class="text-center"><Potroculo mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
         </div>
       )}
 

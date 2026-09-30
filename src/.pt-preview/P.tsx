@@ -3,8 +3,8 @@
 // arms, legs, tail, hat) so CSS can animate it — no image files, no 3D engine, cheap on phones.
 // Poses and animations live in potroculo.css; the mood picks one of them.
 import { useEffect, useState } from 'preact/hooks';
-import { onTalking } from '../../lib/voice/talking';
-import './potroculo.css';
+import { onTalking } from '../lib/voice/talking';
+
 
 export type Mood =
   | 'happy'  // default: breathing, blinking, tail swish
