@@ -1,0 +1,28 @@
+﻿---
+import StudentLayout from '../../layouts/StudentLayout.astro';
+import { PetCustomizer } from '../../components/student/PetCustomizer';
+
+const s = Astro.locals.student;
+if (!s) return Astro.redirect('/entrar');
+
+const db = Astro.locals.db;
+const petRow = await db.prepare('SELECT * FROM student_pets WHERE student_id = ?').bind(s.id).first<{ base_pet: string; equipped_json: string }>();
+
+const initialBase = (petRow?.base_pet || 'peon') as any;
+const initialEquipped = petRow?.equipped_json ? JSON.parse(petRow.equipped_json) : {};
+
+---
+
+<StudentLayout title="Mi Mascota - ChessKids">
+  <div class="mb-8">
+    <h1 class="font-display text-4xl font-extrabold text-slate-800">Mi Mascota</h1>
+    <p class="text-slate-500 mt-2">¡Personaliza tu pieza compañera! Gana XP para desbloquear más accesorios.</p>
+  </div>
+  
+  <PetCustomizer 
+    client:load 
+    studentXp={s.xp} 
+    initialBase={initialBase}
+    initialEquipped={initialEquipped}
+  />
+</StudentLayout>

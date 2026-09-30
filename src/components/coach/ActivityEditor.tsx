@@ -93,7 +93,7 @@ export default function ActivityEditor({ id, clubId, type, visibility = 'private
       </div>
 
       <div class="ck-card">
-        <Editor value={content} onChange={setContent} />
+        <Editor value={content} onChange={setContent} clubId={clubId} suggestTitle={(t) => setTitle((cur) => cur.trim() ? cur : t)} />
       </div>
       {errors.length > 0 && <p class="text-sm font-bold text-amber-700">Para guardar: {errors.join(' · ')}</p>}
     </div>

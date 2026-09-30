@@ -13,6 +13,7 @@ export interface PlayerActivity { id: number; type: string; title: string; conte
 interface Props {
   activity: PlayerActivity;
   assignmentId?: number | null;
+  campaignNodeId?: number | null;
   ageGroup: AgeGroup;
   preview?: boolean; // coach preview: nothing is saved
   exitUrl: string;
@@ -20,7 +21,7 @@ interface Props {
 
 type Feedback = { kind: 'good' | 'bad'; text: string; key: number } | null;
 
-export default function GamePlayer({ activity, assignmentId = null, ageGroup, preview = false, exitUrl }: Props) {
+export default function GamePlayer({ activity, assignmentId = null, campaignNodeId = null, ageGroup, preview = false, exitUrl }: Props) {
   const game = useMemo(() => getGame(activity.type), [activity.type]);
   const [phase, setPhase] = useState<'intro' | 'play' | 'saving' | 'done'>('intro');
   const [progress, setProgress] = useState(0);
@@ -109,7 +110,7 @@ export default function GamePlayer({ activity, assignmentId = null, ageGroup, pr
       const res = await fetch('/api/attempts', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ activityId: activity.id, assignmentId, seconds: seconds.current, ...r }),
+        body: JSON.stringify({ activityId: activity.id, assignmentId, campaignNodeId, seconds: seconds.current, ...r }),
       });
       if (!res.ok) throw new Error((await (res.json() as Promise<any>).catch(() => ({}))).error ?? 'Error');
       setReward(await (res.json() as Promise<any>));

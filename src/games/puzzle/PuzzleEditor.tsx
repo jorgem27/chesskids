@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Board, isPromotion, syncBoard } from '../chess/Board';
 import type { EditorProps } from '../types';
 import { RulesEditor } from '../RulesEditor';
-import { applyUci, DEFAULT_PTS, studentMoveCount, validatePuzzleSet, type Puzzle, type PuzzleSetContent, type PuzzleStep } from './logic';
+import { LichessGenerator } from './LichessGenerator';
+import { applyUci, DEFAULT_PTS, fromLichess, studentMoveCount, validatePuzzleSet, type Puzzle, type PuzzleSetContent, type PuzzleStep } from './logic';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -148,7 +149,7 @@ function PuzzleRecorder({ puzzle, onChange, blitz }: { puzzle: Puzzle; onChange:
   );
 }
 
-export function PuzzleEditor({ value, onChange }: EditorProps<PuzzleSetContent>) {
+export function PuzzleEditor({ value, onChange, clubId, suggestTitle }: EditorProps<PuzzleSetContent>) {
   const [sel, setSel] = useState(0);
   const [bulk, setBulk] = useState('');
   const [showBulk, setShowBulk] = useState(false);
@@ -173,19 +174,17 @@ export function PuzzleEditor({ value, onChange }: EditorProps<PuzzleSetContent>)
     // One puzzle per line: FEN | e2e4 e7e5 ...  (also accepts Lichess CSV "id,FEN,Moves,...")
     const items: Puzzle[] = [];
     for (const raw of bulk.split('\n').map((l) => l.trim()).filter(Boolean)) {
-      let fen = '', moves: string[] = [], lichess = false;
       if (raw.includes('|')) {
         const [f, m] = raw.split('|');
-        fen = f.trim(); moves = m.trim().split(/\s+/);
+        try {
+          new Chess(f.trim());
+          items.push({ fen: f.trim(), moves: m.trim().split(/\s+/), prompt: '' });
+        } catch { /* skip bad line */ }
       } else {
         const parts = raw.split(',');
-        if (parts.length >= 3) { fen = parts[1]; moves = parts[2].trim().split(/\s+/); lichess = true; }
+        const p = parts.length >= 3 ? fromLichess(parts[1], parts[2].trim().split(/\s+/)) : null;
+        if (p) items.push(p);
       }
-      try {
-        const c = new Chess(fen);
-        if (lichess && moves.length) { applyUci(c, moves[0]); fen = c.fen(); moves = moves.slice(1); }
-        items.push({ fen, moves, prompt: '' });
-      } catch { /* skip bad line */ }
     }
     if (items.length) {
       onChange({ ...value, puzzles: [...puzzles, ...items] });
@@ -194,8 +193,15 @@ export function PuzzleEditor({ value, onChange }: EditorProps<PuzzleSetContent>)
     }
   }
 
+  function applyLichess(list: Puzzle[], replace: boolean, title: string) {
+    onChange({ ...value, puzzles: replace ? list : [...puzzles, ...list] });
+    setSel(replace ? 0 : puzzles.length);
+    suggestTitle?.(`${title} · ${list.length} problemas`);
+  }
+
   return (
     <div class="space-y-4">
+      {clubId && <LichessGenerator clubId={clubId} hasPuzzles={puzzles.length > 0} onUse={applyLichess} />}
       {isBlitz && (
         <label class="flex items-center gap-3 font-bold">⏱️ Segundos por problema (0 = sin reloj)
           <input type="number" min={0} max={120} class="ck-input w-24" value={value.timeLimitSec ?? 0}

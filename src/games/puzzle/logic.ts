@@ -69,6 +69,23 @@ export function applyUci(chess: Chess, uci: string) {
   }
 }
 
+/**
+ * Converts a Lichess puzzle (FEN before the opponent's move + UCI line starting with that move)
+ * into our format (FEN with the student to move). Returns null if the data is not playable.
+ */
+export function fromLichess(fen: string, uciMoves: string[]): Puzzle | null {
+  if (uciMoves.length < 2 || uciMoves.length % 2 !== 0) return null;
+  let p: Puzzle;
+  try {
+    const c = new Chess(fen.trim());
+    if (!applyUci(c, uciMoves[0])) return null;
+    p = { fen: c.fen(), moves: uciMoves.slice(1), prompt: '' };
+  } catch {
+    return null;
+  }
+  return validatePuzzleSet({ puzzles: [p] }).length ? null : p;
+}
+
 function validateRules(chess: Chess, rules: MoveRule[] | undefined, n: string, errs: string[]) {
   for (const r of rules ?? []) {
     if (!applyUci(new Chess(chess.fen()), r.uci)) errs.push(`${n}: la jugada ${r.uci} ya no es legal`);

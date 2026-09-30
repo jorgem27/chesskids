@@ -5,6 +5,7 @@ import { computeXp, earnedStickers, kingdomIndex, levelFromXp, nextStreak } from
 interface Body {
   activityId: number;
   assignmentId?: number | null;
+  campaignNodeId?: number | null;
   score: number;
   maxScore: number;
   seconds: number;
@@ -51,14 +52,24 @@ export const POST: APIRoute = async ({ locals, request }) => {
   owned.forEach((o) => had.add(o.sticker_id));
 
   const newXp = s.xp + xp.total;
-  await db.batch([
+  
+  const queries = [
     db.prepare(`INSERT INTO attempts (student_id, activity_id, assignment_id, score, max_score, stars, xp_earned, seconds, mistakes, puzzles_solved, perfect, day)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(s.id, activity.id, assignmentId, score, maxScore, xp.starCount, xp.total, seconds, mistakes, puzzles, perfect, day),
     db.prepare(`UPDATE students SET xp = ?, streak = ?, best_streak = MAX(best_streak, ?), last_active_day = ?,
       total_seconds = total_seconds + ?, puzzles_solved = puzzles_solved + ?, games_completed = games_completed + 1 WHERE id = ?`)
       .bind(newXp, streak.streak, streak.streak, day, seconds, puzzles, s.id),
-  ]);
+  ];
+
+  if (b.campaignNodeId && xp.starCount > 0) {
+    queries.push(
+      db.prepare('INSERT OR IGNORE INTO campaign_progress (student_id, node_id) VALUES (?, ?)')
+        .bind(s.id, Number(b.campaignNodeId))
+    );
+  }
+
+  await db.batch(queries);
 
   const updated = {
     ...s, xp: newXp, streak: streak.streak, total_seconds: s.total_seconds + seconds,

@@ -7,6 +7,7 @@ const path = Astro.url.pathname;
 const nav = [
   { href: '/profe', label: '🏫 Mis clases', active: path === '/profe' || path.startsWith('/profe/clase') },
   { href: '/profe/actividades', label: '🧩 Actividades', active: path.startsWith('/profe/actividades') },
+  { href: '/profe/campanas', label: '🗺️ Campañas', active: path.startsWith('/profe/campanas') },
 ];
 ---
 <Base title={`${title} · ChessKids Profe`}>

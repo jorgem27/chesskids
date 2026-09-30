@@ -9,7 +9,7 @@ import { applyUci, isCorrectMove, type Puzzle } from '../../games/puzzle/logic';
 import { burst, cheer, sideCannons } from '../../lib/fx';
 import { distributeXp, fmtPoints, kidPoints, POINTS, XP_BUDGETS, type KidTally } from '../../lib/projector';
 import { sfx } from '../../lib/sfx';
-import { Mascot } from '../ui/Mascot';
+import { Potroculo as Mascot } from '../ui/Potroculo';
 
 interface Kid { id: number; name: string; avatar: string }
 interface Source { id: number; title: string; type: string; puzzles: Puzzle[] }

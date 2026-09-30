@@ -7,14 +7,18 @@ import type { AgeGroup } from '../../../lib/catalog';
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
 const id = Number(Astro.params.id);
-// Students can only open activities assigned to their class.
+// Students can only open activities assigned to their class directly OR via a campaign.
 const a = await db.prepare(
-  `SELECT a.* FROM activities a WHERE a.id = ? AND EXISTS (SELECT 1 FROM assignments x WHERE x.activity_id = a.id AND x.class_id = ?)`,
-).bind(id, s.class_id).first<ActivityRow>();
+  `SELECT a.* FROM activities a WHERE a.id = ? AND (
+    EXISTS (SELECT 1 FROM assignments x WHERE x.activity_id = a.id AND x.class_id = ?) OR
+    EXISTS (SELECT 1 FROM campaign_nodes n JOIN class_campaigns cc ON cc.campaign_id = n.campaign_id WHERE n.activity_id = a.id AND cc.class_id = ?)
+  )`,
+).bind(id, s.class_id, s.class_id).first<ActivityRow>();
 if (!a) return Astro.redirect('/app');
 const asg = Number(Astro.url.searchParams.get('a')) || null;
+const campNode = Number(Astro.url.searchParams.get('camp')) || null;
 const activity = { id: a.id, type: a.type, title: a.title, content: JSON.parse(a.content_json) };
 ---
 <Base title={`${a.title} · ChessKids`} age={s.age_group}>
-  <GamePlayer client:only="preact" activity={activity} assignmentId={asg} ageGroup={s.age_group as AgeGroup} exitUrl="/app" />
+  <GamePlayer client:only="preact" activity={activity} assignmentId={asg} campaignNodeId={campNode} ageGroup={s.age_group as AgeGroup} exitUrl="/app" />
 </Base>

@@ -4,19 +4,25 @@ import Welcome from '../../components/student/Welcome';
 import CoachPicker from '../../components/student/CoachPicker';
 import { GAME_META } from '../../games/meta';
 import { studentMissions, today, weeklyLeaderboard, xpToday, type ClassRow } from '../../lib/db';
+import { getStudentCampaigns } from '../../lib/campaigns';
 import { addDays, dueLabel } from '../../lib/dates';
 import { DAILY_GOAL_XP, KINGDOMS, kingdomIndex, levelProgress, STICKERS } from '../../lib/rewards';
+import { PET_BASES } from '../../lib/pets';
 
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
 const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(s.class_id).first<ClassRow>())!;
 const t = today();
-const [missions, board, dayXp, stickerCount] = await Promise.all([
+const [missions, campaigns, board, dayXp, stickerCount, ...results] = await Promise.all([
   studentMissions(db, s.id, s.class_id),
+  getStudentCampaigns(db, s.class_id, s.id),
   weeklyLeaderboard(db, s.class_id),
   xpToday(db, s.id),
   db.prepare('SELECT COUNT(*) AS n FROM student_stickers WHERE student_id = ?').bind(s.id).first<{ n: number }>(),
+  db.prepare('SELECT base_pet FROM student_pets WHERE student_id = ?').bind(s.id).first<{ base_pet: string }>(),
 ]);
+const activePetId = results[0]?.base_pet || 'peon';
+const petEmoji = PET_BASES.find(b => b.id === activePetId)?.emoji || '♙';
 const pending = missions.filter((m) => !m.plays);
 const done = missions.filter((m) => m.plays);
 const lp = levelProgress(s.xp);
@@ -75,8 +81,42 @@ const medal = ['🥇', '🥈', '🥉'];
     </div>
   </section>
 
+  <!-- Campaigns (Overworld Maps) -->
+  {campaigns.length > 0 && (
+    <section class="mt-6">
+      <h2 class="mb-3 flex items-center gap-2 font-display text-2xl font-extrabold text-slate-800">🗺️ Campañas de Aventuras</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {campaigns.map((c, i) => {
+          const completed = c.completedNodeIds.size;
+          const total = c.nodes.length;
+          const pct = total ? (completed / total) * 100 : 0;
+          return (
+            <a href={`/app/campanas/${c.id}`} class="group ck-rise block" style={`animation-delay:${i * 0.06}s`}>
+              <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white shadow-[0_6px_0_rgb(0_0_0/0.15)] transition group-hover:-translate-y-1 group-active:translate-y-1">
+                <span class="absolute -right-3 -top-4 text-8xl opacity-25 transition group-hover:rotate-12">🗺️</span>
+                <h3 class="mt-1 font-display text-2xl font-extrabold leading-tight drop-shadow">{c.title}</h3>
+                {c.description && <p class="mt-1 text-sm font-bold opacity-90">{c.description}</p>}
+                
+                <div class="mt-4 flex items-center justify-between">
+                  <span class="text-sm font-bold opacity-90">{completed} / {total} superados</span>
+                  <div class="flex-1 ml-4 mr-2 h-3 overflow-hidden rounded-full bg-black/20">
+                    <div class="h-full rounded-full bg-amber-400" style={`width:${pct}%`}></div>
+                  </div>
+                </div>
+                
+                <div class="mt-3 flex justify-end">
+                  <span class="rounded-xl bg-white px-4 py-1.5 font-display font-extrabold text-purple-700">Ver Mapa ➔</span>
+                </div>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
   <!-- Missions -->
-  <section class="mt-6">
+  <section class="mt-8">
     <h2 class="mb-3 flex items-center gap-2 font-display text-2xl font-extrabold text-slate-800">🎒 Misiones de la semana
       {pending.length > 0 && <span class="rounded-full bg-rose-500 px-2.5 text-base text-white">{pending.length}</span>}
     </h2>
@@ -113,7 +153,20 @@ const medal = ['🥇', '🥈', '🥉'];
     </div>
   </section>
 
-  <div class="mt-6 grid gap-4 md:grid-cols-2">
+    <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <!-- Mascot -->
+    <a href="/app/mascota" class="ck-card block bg-gradient-to-br from-emerald-50 to-white transition hover:-translate-y-1">
+      <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Tu Mascota</p>
+      <div class="mt-2 flex items-center gap-3">
+        <span class="text-6xl ck-float">{petEmoji}</span>
+        <div>
+          <p class="font-display text-3xl font-extrabold text-emerald-600">¡Cuídame!</p>
+          <p class="text-sm font-bold text-slate-500">Vestidor y bailes</p>
+        </div>
+      </div>
+      <p class="mt-3 text-right font-bold text-violet-600">Ver Mascota ➔</p>
+    </a>
+
     <!-- Kingdom -->
     <a href="/app/mapa" class="ck-card block transition hover:-translate-y-1" style={`background: linear-gradient(135deg, ${kingdom.sky}, white)`}>
       <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Tu reino</p>
@@ -167,3 +220,5 @@ const medal = ['🥇', '🥈', '🥉'];
     <button class="text-sm font-bold text-slate-400 hover:text-slate-600">Cerrar sesión en este dispositivo</button>
   </form>
 </StudentLayout>
+
+

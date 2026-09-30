@@ -64,7 +64,7 @@ The coach can reset passwords/drawings or **create a new link**. That revokes th
 | 🍓 `fruit-collector` Fruit collector | Move a piece to collect all the fruit. An exact solver (BFS + bitmask DP) works out the shortest path and awards 3⭐ if you match it. Supports 🪨 rocks. |
 | 🤖 `play-bot` Play vs bot | The student plays from a position the coach sets up (e.g. K+R vs K) against Stockfish (lite WASM, runs in a Web Worker from `public/engine`, GPLv3). Optional notebook explanation with a demo board. Stalemate/checkmate/move limit handled; stars by number of moves. |
 
-**Creating content is easy:** puzzles are recorded by playing the solution on the board (or imported in bulk from FEN/Lichess CSV). Lessons are a PGN that can be exported from a Lichess study. Fruit levels are painted by tapping squares.
+**Creating content is easy:** puzzles are recorded by playing the solution on the board, imported in bulk from FEN/Lichess CSV, or **generated from the Lichess puzzle database** by theme + Elo + count (⚡ "Puzzles de Lichess"; setup in `scripts/lichess/README.md`). Lessons are a PGN that can be exported from a Lichess study. Fruit levels are painted by tapping squares.
 
 ### ➕ Adding a new game type
 
@@ -114,7 +114,6 @@ npm run check  # TypeScript types
 
 * Live mode where kids answer from their phones during class (Cloudflare Durable Objects).
 * Shop for board skins/avatars paid with stars.
-* Automatic Lichess puzzle import by theme.
 * Push notifications ("You have homework!") via PWA.
 
 ## 📸 Screenshots

@@ -22,7 +22,14 @@ export interface GameApi {
 }
 
 export interface PlayerProps<C> { content: C; api: GameApi; title: string }
-export interface EditorProps<C> { value: C; onChange: (c: C) => void }
+export interface EditorProps<C> {
+  value: C;
+  onChange: (c: C) => void;
+  /** Club the activity belongs to (for editors that fetch club-scoped data). */
+  clubId?: number;
+  /** Lets an editor propose a title; applied only while the title is empty. */
+  suggestTitle?: (t: string) => void;
+}
 
 export interface GameUi<C = any> {
   Player: FunctionComponent<PlayerProps<C>>;

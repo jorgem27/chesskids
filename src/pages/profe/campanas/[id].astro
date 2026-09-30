@@ -1,0 +1,137 @@
+---
+import CoachLayout from '../../../layouts/CoachLayout.astro';
+import { coachClasses, VISIBLE_ACTIVITY_SQL } from '../../../lib/db';
+import { getCampaignNodes, CAMPAIGN_REWARDS, type CampaignRow } from '../../../lib/campaigns';
+import { GAME_META } from '../../../games/meta';
+
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const campaignId = Number(Astro.params.id);
+
+const campaign = await db.prepare('SELECT * FROM campaigns WHERE id = ?').bind(campaignId).first<CampaignRow>();
+if (!campaign) return Astro.redirect('/profe/campanas');
+
+const reward = CAMPAIGN_REWARDS.find(r => r.id === campaign.reward_type) || CAMPAIGN_REWARDS[0];
+const nodes = await getCampaignNodes(db, campaign.id);
+
+const classes = await coachClasses(db, coach.id);
+const { results: assignments } = await db.prepare('SELECT class_id FROM class_campaigns WHERE campaign_id = ?').bind(campaignId).all<{class_id: number}>();
+const assignedClassIds = new Set(assignments.map(a => a.class_id));
+
+// Library to add new nodes
+const { results: library } = await db.prepare(
+  "SELECT id, title, type FROM activities WHERE club_id = ? AND " + VISIBLE_ACTIVITY_SQL + " ORDER BY updated_at DESC"
+).bind(campaign.club_id, coach.id).all<{id: number, title: string, type: string}>();
+
+if (Astro.request.method === 'POST') {
+  const data = await Astro.request.formData();
+  const action = data.get('action');
+  
+  if (action === 'add_node') {
+    const activityId = data.get('activity_id');
+    if (activityId) {
+      await db.prepare('INSERT INTO campaign_nodes (campaign_id, activity_id) VALUES (?, ?)')
+        .bind(campaign.id, activityId).run();
+      return Astro.redirect(`/profe/campanas/${campaign.id}`);
+    }
+  } else if (action === 'delete_node') {
+    const nodeId = data.get('node_id');
+    if (nodeId) {
+      await db.prepare('DELETE FROM campaign_nodes WHERE id = ? AND campaign_id = ?')
+        .bind(nodeId, campaign.id).run();
+      return Astro.redirect(`/profe/campanas/${campaign.id}`);
+    }
+  } else if (action === 'assign') {
+    const classId = data.get('class_id');
+    if (classId) {
+      await db.prepare('INSERT INTO class_campaigns (class_id, campaign_id, assigned_by) VALUES (?, ?, ?)')
+        .bind(classId, campaign.id, coach.id).run();
+      return Astro.redirect(`/profe/campanas/${campaign.id}`);
+    }
+  }
+}
+---
+<CoachLayout title={campaign.title}>
+  <div class="mb-5 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <a href="/profe/campanas" class="text-sm font-bold text-violet-600 hover:underline">← Volver a Campañas</a>
+      <h1 class="mt-2 font-display text-3xl font-extrabold text-slate-800">🗺️ {campaign.title}</h1>
+      {campaign.description && <p class="text-sm text-slate-500">{campaign.description}</p>}
+    </div>
+    
+    <div class="flex items-center gap-3 rounded-2xl bg-white px-4 py-2 shadow-sm ring-1 ring-slate-200">
+      <span class="text-3xl">{reward.emoji}</span>
+      <div>
+        <p class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Recompensa</p>
+        <p class="font-bold text-slate-800">{reward.name}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Nodos -->
+    <div class="ck-card">
+      <h2 class="font-display text-xl font-extrabold">Camino del Mapa</h2>
+      
+      {nodes.length === 0 ? (
+        <p class="mt-4 text-center text-sm font-bold text-slate-500">Aún no hay niveles. Añade una actividad de tu biblioteca.</p>
+      ) : (
+        <div class="mt-4 space-y-3 relative">
+          <div class="absolute left-6 top-6 bottom-6 w-1 bg-slate-200"></div>
+          {nodes.map((n, i) => (
+            <div class="relative flex items-center gap-3 bg-white pl-12 pr-3 py-2 rounded-xl ring-1 ring-slate-200">
+              <div class="absolute left-4 top-1/2 -mt-3 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-sm ring-4 ring-white">{i + 1}</div>
+              <span class="text-2xl">{GAME_META[n.activity_type]?.emoji || '🎮'}</span>
+              <div class="flex-1 truncate">
+                <p class="truncate font-bold text-slate-800">{n.activity_title}</p>
+              </div>
+              <form method="post">
+                <input type="hidden" name="action" value="delete_node" />
+                <input type="hidden" name="node_id" value={n.id} />
+                <button class="text-slate-400 hover:text-rose-600" title="Borrar nodo">✖</button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form method="post" class="mt-6 flex gap-2 border-t border-slate-100 pt-4">
+        <input type="hidden" name="action" value="add_node" />
+        <select name="activity_id" required class="ck-input flex-1">
+          <option value="">-- Añadir actividad al mapa --</option>
+          {library.map(a => <option value={a.id}>{GAME_META[a.type]?.emoji} {a.title}</option>)}
+        </select>
+        <button type="submit" class="ck-btn ck-btn-primary">Añadir</button>
+      </form>
+    </div>
+
+    <!-- Asignaciones -->
+    <div class="ck-card">
+      <h2 class="font-display text-xl font-extrabold">Asignar a clases</h2>
+      <p class="text-sm text-slate-500">Los alumnos verán esta campaña en su inicio.</p>
+      
+      <div class="mt-4 space-y-3">
+        {classes.map(c => {
+          const isAssigned = assignedClassIds.has(c.id);
+          return (
+            <div class={`flex items-center justify-between rounded-xl p-3 ring-1 ${isAssigned ? 'bg-violet-50 ring-violet-200' : 'bg-white ring-slate-200'}`}>
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">{c.emoji}</span>
+                <span class="font-bold">{c.name}</span>
+              </div>
+              {isAssigned ? (
+                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-700">✓ Asignada</span>
+              ) : (
+                <form method="post">
+                  <input type="hidden" name="action" value="assign" />
+                  <input type="hidden" name="class_id" value={c.id} />
+                  <button type="submit" class="ck-btn ck-btn-secondary px-3 py-1 text-xs">Asignar</button>
+                </form>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  </div>
+</CoachLayout>

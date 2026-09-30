@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compileLesson } from '../src/games/pgn/lesson';
 import { GAME_META } from '../src/games/meta';
-import { validatePuzzleSet, isCorrectMove } from '../src/games/puzzle/logic';
+import { validatePuzzleSet, isCorrectMove, fromLichess } from '../src/games/puzzle/logic';
+import { Chess } from 'chess.js';
 
 test('sample lesson compiles with 2 questions', () => {
   const l = compileLesson(GAME_META['pgn-lesson'].defaultContent().pgn);
@@ -25,6 +26,32 @@ test('puzzle validation and mate acceptance', () => {
   assert.ok(validatePuzzleSet({ puzzles: [{ fen, moves: ['a1a9'] }] }).length > 0);
   assert.equal(isCorrectMove(fen, 'a1a8', 'a1a8'), true);
   assert.equal(isCorrectMove(fen, 'a1a7', 'a1a8'), false);
+});
+
+test('Lichess CSV rows convert to valid student-to-move puzzles', () => {
+  // Real rows from lichess_db_puzzle.csv: FEN is before the opponent's move, Moves starts with it.
+  const rows = [
+    ['r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2R1/PqP2bPP/7K b - - 0 24', 'f2g3 e6e7 b2b1 b3c1 b1c1 h6c1', 'w'],
+    ['5rk1/1p3ppp/pq3b2/8/8/1P1Q1N2/P4PPP/3R2K1 w - - 2 27', 'd3d6 f8d8 d6d8 f6d8', 'b'],
+  ] as const;
+  for (const [fen, moves, toMove] of rows) {
+    const p = fromLichess(fen, moves.split(' '));
+    assert.ok(p);
+    assert.equal(new Chess(p.fen).turn(), toMove);
+    assert.deepEqual(p.moves, moves.split(' ').slice(1));
+    assert.deepEqual(validatePuzzleSet({ puzzles: [p] }), []);
+  }
+  assert.equal(fromLichess('8/8/8/8/8/8/8/8 w - - 0 1', ['a1a2', 'a2a3']), null);
+  assert.equal(fromLichess(rows[0][0], ['a1a8', 'e6e7']), null);
+  assert.equal(fromLichess(rows[0][0], ['f2g3']), null);
+  // Illegal move later in the line, and an odd-length line.
+  assert.equal(fromLichess(rows[0][0], ['f2g3', 'e6e7', 'a1a1', 'b3c1']), null);
+  assert.equal(fromLichess(rows[0][0], ['f2g3', 'e6e7', 'b2b1']), null);
+  // Promotion in the solution (lowercase UCI suffix).
+  const promo = fromLichess('8/4P1k1/8/8/8/8/6K1/8 b - - 0 1', ['g7g6', 'e7e8q']);
+  assert.ok(promo);
+  assert.deepEqual(promo.moves, ['e7e8q']);
+  assert.equal(isCorrectMove(promo.fen, 'e7e8q', 'e7e8q'), true);
 });
 
 test('demo seed puzzles and fruit levels are valid', async () => {
