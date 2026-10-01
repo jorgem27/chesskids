@@ -1,7 +1,13 @@
-# AI coach voices
+# Potróculo's voices
 
-Students pick a coach on their dashboard (or "Sorpresa" for a random one per session, or "Sin voz").
-Each coach says lines from `src/lib/voice/phrases.ts` (plus its own lines in `coaches.ts`).
+Potróculo is always the mascot; what changes is how he talks: Clásico, Pirata, Robot, Animadora,
+Entrenador, Caballero… Each voice is defined in `src/lib/voice/coaches.ts` (Edge TTS voice, speed,
+pitch, audio effect and its own themed lines, mixed with the shared ones in `phrases.ts`).
+
+Who picks it:
+- **Students**, on their dashboard ("La voz de Potróculo"). Saved in `students.voice`, so it follows
+  them to any device. Includes "Sorpresa" (random each session) and "Sin voz".
+- **Coaches**, in the projector setup. Saved on that computer.
 
 ## How it plays (free forever)
 
@@ -23,9 +29,9 @@ npm run voices -- --list    # line counts
 Edited a line? Just run it again: new lines get recorded and unused clips are removed.
 Changing a coach's voice, speed, pitch or effect re-records that coach.
 
-## Adding a coach
+## Adding a voice
 
-Add an entry to `COACHES` in `src/lib/voice/coaches.ts`, run `npm run voices -- <id>`, and commit
+Add an entry to `COACHES` (never rename an existing id: it's stored in `students.voice`) in `src/lib/voice/coaches.ts`, run `npm run voices -- <id>`, and commit
 `public/voices/<id>/`. List the voices with `python -m edge_tts --list-voices | grep ^es-`
 (45+ Spanish voices: Spain, Mexico, Argentina, Colombia…). `filter` accepts any ffmpeg audio
 filter (echo, robot, etc.).

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COACHES, coachTemplates } from '../src/lib/voice/coaches';
+import { COACHES, coachTemplates, VOICE_PREFS } from '../src/lib/voice/coaches';
 import { BANKS, cleanForSpeech, clipId, ENUMERABLE, expand, pickFresh, placeholders, render, type Cue } from '../src/lib/voice/phrases';
 
 const CUES = Object.keys(BANKS) as Cue[];
@@ -81,4 +81,20 @@ test('voice: coaches have unique ids, an intro and valid edge settings', () => {
     assert.match(c.tts.rate, /^[+-]\d+%$/);
     assert.match(c.tts.pitch, /^[+-]\d+Hz$/);
   }
+});
+
+test('voice: every Potróculo voice has its own themed lines and a valid flavor', () => {
+  for (const c of COACHES) {
+    assert.ok(c.flavor >= 0 && c.flavor <= 1, c.id);
+    for (const cue of ['correct', 'wrong'] as Cue[]) assert.ok((c.extra?.[cue]?.length ?? 0) >= 2, `${c.id}.${cue}`);
+    for (const cue of Object.keys(c.extra ?? {}) as Cue[]) {
+      assert.ok(cue in BANKS, `${c.id}: unknown cue ${cue}`);
+      for (const t of c.extra![cue]!) for (const k of placeholders(t)) assert.ok(KNOWN_VARS.has(k), `${c.id}.${cue}: {${k}}`);
+    }
+  }
+});
+
+test('voice: stored preferences are the voice ids plus random/none', () => {
+  assert.deepEqual([...VOICE_PREFS].sort(), [...COACHES.map((c) => c.id), 'none', 'random'].sort());
+  for (const p of VOICE_PREFS) assert.ok(p.length <= 20);
 });

@@ -2,27 +2,61 @@
 // pre-recorded clip (Web Audio) or, when there is no clip, the browser's speechSynthesis.
 // Everything runs on the device: no per-play cost, no requests beyond our own static files.
 
+import { useEffect, useState } from 'preact/hooks';
 import { audioContext, isMuted } from '../sfx';
-import { COACHES, coachById, coachTemplates, type Coach } from './coaches';
+import { COACHES, coachById, type Coach } from './coaches';
 import { BANKS, cleanForSpeech, clipId, pickFresh, render, type Cue, type Vars } from './phrases';
 import { setTalking, stopTalking, talkLater } from './talking';
 
-/** A coach id, 'random' (one coach per browser session) or 'none' (sounds only, no voice). */
+/** A voice id, 'random' (one voice per browser session) or 'none' (sounds only, no voice). */
 export type CoachPref = string;
 
 const PREF_KEY = 'ck-coach';
 const SESSION_KEY = 'ck-coach-session';
 const browser = typeof window !== 'undefined';
 
+// Student pages carry the student's saved voice as <html data-voice> (StudentLayout); other
+// pages (coach, projector) keep the choice on the device.
+function studentPref(): string | undefined {
+  return browser ? document.documentElement.dataset.voice : undefined;
+}
+
 export function getCoachPref(): CoachPref {
+  const s = studentPref();
+  if (s) return s;
   try { return localStorage.getItem(PREF_KEY) ?? 'random'; } catch { return 'random'; }
 }
 
-/** Save the choice; resolves once the new coach's clip list is loaded (so a sample plays as a clip). */
+/**
+ * Save the choice (students: on the server; otherwise on this device). Resolves once the new
+ * voice's clip list is loaded, so a sample plays as a clip. Throws if the server refused it.
+ */
 export async function setCoachPref(pref: CoachPref): Promise<void> {
-  try { localStorage.setItem(PREF_KEY, pref); } catch { /* private mode */ }
+  if (studentPref() !== undefined) {
+    const r = await fetch('/api/voice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ voice: pref }) })
+      .catch(() => null);
+    if (!r?.ok) throw new Error('No se pudo guardar la voz');
+    document.documentElement.dataset.voice = pref; // only once the server has it
+  } else {
+    try { localStorage.setItem(PREF_KEY, pref); } catch { /* private mode */ }
+  }
   const c = currentCoach();
+  window.dispatchEvent(new Event(VOICE_EVENT));
   if (c) await manifest(c);
+}
+
+const VOICE_EVENT = 'ck-voice';
+
+/** The current voice id (for Potróculo's costume); updates when the voice is changed. */
+export function useVoiceId(): string | undefined {
+  const [id, setId] = useState<string>();
+  useEffect(() => {
+    const update = () => setId(currentCoach()?.id);
+    update();
+    window.addEventListener(VOICE_EVENT, update);
+    return () => window.removeEventListener(VOICE_EVENT, update);
+  }, []);
+  return id;
 }
 
 let sessionCoach: string | null = null;
@@ -63,20 +97,27 @@ function manifest(c: Coach): Promise<Manifest> {
 
 // ---------- Choosing lines ----------
 
-const recent: Partial<Record<Cue, string[]>> = {};
+const recent: Record<string, string[]> = {};
 
 /**
- * A fresh line for a situation, avoiding the last ones said. When the coach has recorded
- * clips, only recorded lines are chosen (so the voice never switches mid-game).
+ * A fresh line for a situation, avoiding the last ones said. The voice's themed lines are
+ * picked `flavor` of the time, the shared ones otherwise. When the voice has recorded clips,
+ * only recorded lines are chosen (so the voice never switches mid-game).
  */
 export function line(cue: Cue, vars: Vars = {}): string {
   const coach = currentCoach();
-  const texts = coachTemplates(coach ?? undefined, cue, BANKS[cue])
-    .map((t) => render(t, vars))
-    .filter((t): t is string => !!t);
   const clips = coach ? ready.get(coach.id)?.clips : undefined;
-  const recorded = clips ? texts.filter((t) => clips.has(clipId(t))) : [];
-  return pickFresh(recorded.length ? recorded : texts, (recent[cue] ??= []));
+  const usable = (templates: readonly string[]) => {
+    const texts = templates.map((t) => render(t, vars)).filter((t): t is string => !!t);
+    const recorded = clips ? texts.filter((t) => clips.has(clipId(t))) : [];
+    return recorded.length ? recorded : texts;
+  };
+  const own = coach?.extra?.[cue];
+  if (coach && own && Math.random() < coach.flavor) {
+    const pool = usable(own);
+    if (pool.length) return pickFresh(pool, (recent[`${coach.id}:${cue}`] ??= []));
+  }
+  return pickFresh(usable(BANKS[cue]), (recent[cue] ??= []));
 }
 
 /** Choose a line for the cue, say it and return it (to show it on screen too). */

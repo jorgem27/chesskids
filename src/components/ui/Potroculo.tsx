@@ -23,6 +23,8 @@ interface Props {
   class?: string;
   /** Force the lips on/off. By default they follow the coach voice (src/lib/voice/talking.ts). */
   talking?: boolean;
+  /** Outfit matching the voice he speaks with (voice id from src/lib/voice/coaches.ts). */
+  costume?: string;
 }
 
 const C = {
@@ -182,7 +184,137 @@ function Eyes({ mood }: { mood: Mood }) {
   );
 }
 
-export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking }: Props) {
+// ---------- Costumes (one per voice; shapes follow assets/potroculo/spritesheet.jpg) ----------
+
+function Hat({ costume }: { costume?: string }) {
+  switch (costume) {
+    case 'pirata': // black tricorn with gold trim and a knight
+      return (
+        <>
+          <path d="M74 52 Q75 22 100 20 Q125 22 126 52 Z" fill={C.hat} stroke={C.line} stroke-width="1.8" />
+          <path d="M52 52 Q60 36 77 44 Q100 26 123 44 Q140 36 148 52 Q124 64 100 59 Q76 64 52 52 Z" fill={C.hat} stroke={C.gold} stroke-width="3" stroke-linejoin="round" />
+          <path d="M52 52 Q60 36 77 44 Q100 26 123 44 Q140 36 148 52 Q124 64 100 59 Q76 64 52 52 Z" fill="none" stroke={C.line} stroke-width="1" />
+          <text x="100" y="51" text-anchor="middle" font-size="15" fill={C.gold} stroke={C.goldDark} stroke-width=".6">♞</text>
+        </>
+      );
+    case 'robo': // silver helmet with antenna and a glowing bulb
+      return (
+        <>
+          <path d="M100 21 L100 6" stroke="#64748b" stroke-width="3" stroke-linecap="round" />
+          <circle class="pt-bulb" cx="100" cy="4" r="5.5" fill="#7dd3fc" stroke="#0369a1" stroke-width="1.4" />
+          <path d="M70 62 Q68 22 100 20 Q132 22 130 62 Q100 54 70 62 Z" fill="#cbd5e1" stroke={C.line} stroke-width="1.8" />
+          <path d="M78 34 Q100 26 122 34" stroke="#f8fafc" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8" />
+          <path d="M70 56 Q100 48 130 56" stroke="#94a3b8" stroke-width="2" fill="none" />
+          <circle cx="80" cy="48" r="1.6" fill="#64748b" /><circle cx="120" cy="48" r="1.6" fill="#64748b" />
+        </>
+      );
+    case 'animadora': // big purple and yellow bow
+      return (
+        <>
+          <path d="M100 46 L74 30 Q66 46 76 60 Z" fill="#8b5cf6" stroke={C.line} stroke-width="1.6" stroke-linejoin="round" />
+          <path d="M100 46 L126 30 Q134 46 124 60 Z" fill="#8b5cf6" stroke={C.line} stroke-width="1.6" stroke-linejoin="round" />
+          <path d="M78 36 L94 45 M122 36 L106 45" stroke="#facc15" stroke-width="3" stroke-linecap="round" />
+          <rect x="93" y="40" width="14" height="12" rx="3" fill="#facc15" stroke={C.line} stroke-width="1.6" />
+        </>
+      );
+    case 'entrenador': // navy cap with a rook
+      return (
+        <>
+          <path d="M72 56 Q71 26 100 24 Q129 26 128 56 Z" fill="#1e3a8a" stroke={C.line} stroke-width="1.8" />
+          <path d="M56 59 Q66 50 92 54 L92 59 Q74 58 56 62 Z" fill="#172554" stroke={C.line} stroke-width="1.6" stroke-linejoin="round" />
+          <circle cx="100" cy="25" r="3" fill="#172554" />
+          <text x="104" y="48" text-anchor="middle" font-size="14" fill="#fff">♜</text>
+        </>
+      );
+    case 'caballero': // knight helmet with a red plume
+      return (
+        <>
+          <path d="M100 22 Q110 2 136 8 Q120 10 110 24 Z" fill={C.red} stroke={C.redDark} stroke-width="1.4" />
+          <path d="M70 62 Q68 22 100 20 Q132 22 130 62 Q100 54 70 62 Z" fill="#cbd5e1" stroke={C.line} stroke-width="1.8" />
+          <path d="M96 22 v36" stroke="#94a3b8" stroke-width="3" />
+          <path d="M80 34 Q90 28 98 28" stroke="#f8fafc" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8" />
+        </>
+      );
+    default: // the classic top hat
+      return (
+        <>
+          <ellipse cx="100" cy="56" rx="37" ry="7.5" fill={C.hat} stroke={C.line} stroke-width="1.8" />
+          <path d="M76 54 L79 16 Q100 10 121 16 L124 54 Q100 60 76 54 Z" fill={C.hat} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
+          <path d="M77.3 40 Q100 44 122.7 40 L123.5 51 Q100 57 76.5 51 Z" fill={C.red} stroke={C.redDark} stroke-width="1.2" />
+          <ellipse cx="100" cy="15.5" rx="21" ry="4.2" fill={C.hatTop} stroke={C.line} stroke-width="1.4" />
+          <path d="M85 21 L83.5 38" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".14" />
+        </>
+      );
+  }
+}
+
+function PomPom({ x, y }: { x: number; y: number }) {
+  const tufts = Array.from({ length: 10 }, (_, i) => {
+    const a = (i / 10) * Math.PI * 2;
+    return <circle key={i} cx={x + Math.cos(a) * 12} cy={y + Math.sin(a) * 12} r="7.5" fill={i % 2 ? '#facc15' : '#8b5cf6'} stroke={C.line} stroke-width=".8" />;
+  });
+  return <g class="pt-pompom">{tufts}<circle cx={x} cy={y} r="10" fill="#a78bfa" /></g>;
+}
+
+/** Costume pieces worn on the body (drawn inside the body group). */
+function BodyWear({ costume }: { costume?: string }) {
+  switch (costume) {
+    case 'pirata': // red and white striped sash
+      return (
+        <g>
+          <path d="M77 170 Q100 178 123 170" stroke="#fff" stroke-width="8" fill="none" />
+          <path d="M77 170 Q100 178 123 170" stroke={C.red} stroke-width="8" stroke-dasharray="4 4" fill="none" />
+          <path d="M77 166 Q100 174 123 166 M77 174 Q100 182 123 174" stroke={C.line} stroke-width="1" fill="none" />
+          <path d="M112 175 l2 16 l6 -1 l-2 -15 z" fill={C.red} stroke={C.line} stroke-width="1" />
+        </g>
+      );
+    case 'robo': // control panel with colorful buttons
+      return (
+        <g>
+          <rect x="87" y="158" width="26" height="16" rx="3" fill="#475569" stroke={C.line} stroke-width="1.4" />
+          <rect x="90" y="161" width="5" height="4" rx="1" fill="#ef4444" /><rect x="97" y="161" width="5" height="4" rx="1" fill="#22c55e" />
+          <rect x="90" y="167" width="5" height="4" rx="1" fill="#3b82f6" /><rect x="97" y="167" width="5" height="4" rx="1" fill="#facc15" />
+          <rect class="pt-bulb" x="104" y="161" width="6" height="10" rx="1" fill="#67e8f9" />
+        </g>
+      );
+    case 'animadora': // chess-knight badge on the cheer top
+      return <text x="100" y="168" text-anchor="middle" font-size="11" fill="#6d28d9">♞</text>;
+    case 'entrenador': // whistle on a cord
+      return (
+        <g>
+          <path d="M90 134 Q100 160 110 134" stroke="#1d4ed8" stroke-width="1.6" fill="none" />
+          <rect x="94" y="152" width="13" height="7" rx="3.5" fill="#cbd5e1" stroke={C.line} stroke-width="1.3" />
+          <circle cx="97" cy="155.5" r="1.4" fill="#475569" />
+        </g>
+      );
+    default:
+      return null;
+  }
+}
+
+/** The vest changes colour with the outfit. */
+function vestColors(costume?: string): [string, string] {
+  if (costume === 'animadora') return ['#facc15', '#a16207'];
+  if (costume === 'robo') return ['#94a3b8', '#475569'];
+  if (costume === 'entrenador') return ['#1e3a8a', '#172554'];
+  if (costume === 'caballero') return ['#64748b', '#334155'];
+  return [C.vest, C.vestDark];
+}
+
+function Parrot() {
+  return (
+    <g class="pt-parrot" transform="translate(124 106)">
+      <path d="M6 26 l-3 11 l7 -5 z" fill="#15803d" stroke={C.line} stroke-width="1" />
+      <ellipse cx="9" cy="17" rx="8" ry="12" fill="#4ade80" stroke={C.line} stroke-width="1.4" />
+      <path d="M4 14 q4 10 10 12 q-2 -9 -10 -12 z" fill="#16a34a" />
+      <circle cx="10" cy="3" r="7" fill="#4ade80" stroke={C.line} stroke-width="1.4" />
+      <path d="M15 1 q7 1 4 8 q-3 -3 -5 -4 z" fill="#fb923c" stroke={C.line} stroke-width="1" />
+      <circle cx="12" cy="1" r="1.6" fill={C.pupil} />
+    </g>
+  );
+}
+
+export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking, costume }: Props) {
   const [voice, setVoice] = useState(false);
   useEffect(() => (talking === undefined ? onTalking(setVoice) : undefined), [talking]);
   const talk = talking ?? voice;
@@ -197,6 +329,7 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
     return () => io.disconnect();
   }, []);
   const armsUp = mood === 'party' || mood === 'dance';
+  const [vest, vestDark] = vestColors(costume);
 
   return (
     <svg
@@ -243,14 +376,14 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
           <path d="M77 150 Q74 186 90 188 L110 188 Q126 186 123 150 Z" fill={C.coat} stroke={C.line} stroke-width="1.8" />
           <path d="M87 110 L113 110 L116 140 L84 140 Z" fill={C.coat} stroke={C.line} stroke-width="1.8" />
           <path d="M79 138 Q100 128 121 138 L123 176 Q100 183 77 176 Z" fill={C.shirt} stroke={C.line} stroke-width="1.8" />
-          <path d="M79 138 Q86 135 92 139 L100 163 L100 181 Q87 181 77 176 Z" fill={C.vest} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
-          <path d="M121 138 Q114 135 108 139 L100 163 L100 181 Q113 181 123 176 Z" fill={C.vest} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
-          <path d="M100 165 L100 181 Q107 181 113 180" stroke={C.vestDark} stroke-width="2" fill="none" />
+          <path d="M79 138 Q86 135 92 139 L100 163 L100 181 Q87 181 77 176 Z" fill={vest} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
+          <path d="M121 138 Q114 135 108 139 L100 163 L100 181 Q113 181 123 176 Z" fill={vest} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
+          <path d="M100 165 L100 181 Q107 181 113 180" stroke={vestDark} stroke-width="2" fill="none" />
           <circle cx="96.5" cy="167" r="1.9" fill={C.gold} stroke={C.goldDark} stroke-width=".8" />
           <circle cx="96.5" cy="175" r="1.9" fill={C.gold} stroke={C.goldDark} stroke-width=".8" />
           <path d="M83 168 h8" stroke={C.gold} stroke-width="1.3" stroke-linecap="round" />
           <path d="M109 147 h8 v5 q0 5 -4 7 q-4 -2 -4 -7 z" fill={C.gold} stroke={C.goldDark} stroke-width=".9" />
-          <path d="M111.5 155 q1.5 -5 3 -6 q1 2 0 6 z" fill={C.vestDark} />
+          <path d="M111.5 155 q1.5 -5 3 -6 q1 2 0 6 z" fill={vestDark} />
           {/* collar + bow tie */}
           <path d="M92 131 L99 139 L91 141 Z M108 131 L101 139 L109 141 Z" fill="#fff" stroke={C.line} stroke-width="1.2" stroke-linejoin="round" />
           <g class="pt-bow">
@@ -258,6 +391,7 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
             <path d="M100 136 L114 128 Q118 136 114 145 Z" fill={C.red} stroke={C.redDark} stroke-width="1.5" stroke-linejoin="round" />
             <rect x="96" y="132" width="8" height="8" rx="2.5" fill={C.red} stroke={C.redDark} stroke-width="1.5" />
           </g>
+          <BodyWear costume={costume} />
           {/* monocle chain */}
           <path d="M122 88 Q132 112 119 142" stroke={C.gold} stroke-width="1.4" stroke-dasharray="2 1.6" fill="none" />
         </g>
@@ -268,6 +402,7 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
           <g class="pt-fore pt-fore-r">
             <Limb d="M134 158 L125 172" fill={C.shirt} w={10} />
             <Hoof x={123} y={174} />
+            {costume === 'animadora' && <PomPom x={123} y={170} />}
           </g>
         </g>
 
@@ -276,8 +411,9 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
           <Limb d="M83 142 L66 152" fill={C.shirt} w={11} />
           <g class="pt-fore pt-fore-l">
             <Limb d="M66 152 L61 134" fill={C.shirt} w={10} />
-            <Pawn x={60} y={128} />
+            {costume !== 'animadora' && <Pawn x={60} y={128} />}
             <Hoof x={60} y={130} />
+            {costume === 'animadora' && <PomPom x={60} y={124} />}
           </g>
         </g>
 
@@ -310,8 +446,17 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
           <g class="pt-eyes"><Eyes mood={mood} /></g>
           <Brows mood={mood} />
 
-          {/* monocle */}
-          <circle cx="113" cy="80" r="12" fill="#bfe9ff" fill-opacity=".22" stroke={C.gold} stroke-width="3" />
+          {/* eyepatch (pirate) */}
+          {costume === 'pirata' && (
+            <g>
+              <path d="M79 73 L71 64 M97 73 L127 58" stroke={C.pupil} stroke-width="2" />
+              <ellipse cx="88" cy="80" rx="10.5" ry="11" fill="#1f2937" stroke={C.line} stroke-width="1.4" />
+            </g>
+          )}
+
+          {/* monocle (a glowing LED lens for the robot) */}
+          {costume === 'robo' && <circle class="pt-bulb" cx="113" cy="80" r="11" fill="#22d3ee" fill-opacity=".45" />}
+          <circle cx="113" cy="80" r="12" fill="#bfe9ff" fill-opacity=".22" stroke={costume === 'robo' ? '#0891b2' : C.gold} stroke-width="3" />
           <circle cx="113" cy="80" r="12" fill="none" stroke={C.goldDark} stroke-width="1" />
           <path d="M106 73 q3 -3 7 -3" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".8" />
 
@@ -325,13 +470,7 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
 
           {/* forelock + top hat */}
           <path d="M78 60 Q82 73 89 64 Q94 75 100 64 Q107 74 112 63 Q118 71 122 60 L120 55 L80 55 Z" fill={C.mane} stroke={C.line} stroke-width="1.6" stroke-linejoin="round" />
-          <g class="pt-hat">
-            <ellipse cx="100" cy="56" rx="37" ry="7.5" fill={C.hat} stroke={C.line} stroke-width="1.8" />
-            <path d="M76 54 L79 16 Q100 10 121 16 L124 54 Q100 60 76 54 Z" fill={C.hat} stroke={C.line} stroke-width="1.8" stroke-linejoin="round" />
-            <path d="M77.3 40 Q100 44 122.7 40 L123.5 51 Q100 57 76.5 51 Z" fill={C.red} stroke={C.redDark} stroke-width="1.2" />
-            <ellipse cx="100" cy="15.5" rx="21" ry="4.2" fill={C.hatTop} stroke={C.line} stroke-width="1.4" />
-            <path d="M85 21 L83.5 38" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".14" />
-          </g>
+          <g class="pt-hat"><Hat costume={costume} /></g>
 
           {/* mood extras */}
           <g class="pt-steam" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1">
@@ -341,6 +480,8 @@ export function Potroculo({ mood = 'happy', size = 96, class: cls = '', talking 
           <path class="pt-vein" d="M130 18 l6 6 M136 18 l-6 6 M133 14 v4 M133 24 v4 M126 21 h4 M136 21 h4" stroke={C.red} stroke-width="2.2" stroke-linecap="round" />
           <path class="pt-tear" d="M84 88 q-3 5 0 7 q3 -2 0 -7 z" fill="#60a5fa" />
         </g>
+
+        {costume === 'pirata' && <Parrot />}
 
         {/* music notes while dancing */}
         {armsUp && (

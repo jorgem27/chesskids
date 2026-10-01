@@ -139,3 +139,9 @@
   .pt .pt-talkmouth { transform: scale(.9, .55); }
   .pt .pt-speed { display: none !important; }
 }
+
+/* Costume details: glowing robot bulb/lens */
+.pt-bulb { animation: pt-glow 1.6s ease-in-out infinite; }
+@keyframes pt-glow { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.pt-paused .pt-bulb { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .pt-bulb { animation: none; } }

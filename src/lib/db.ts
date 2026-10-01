@@ -6,6 +6,7 @@ export interface StudentRow {
   id: number; class_id: number; display_name: string; avatar: string; age_group: string;
   username: string; login_token: string; xp: number; streak: number; best_streak: number;
   last_active_day: string | null; total_seconds: number; puzzles_solved: number; games_completed: number;
+  voice: string; // Potróculo voice id, 'random' or 'none'
 }
 
 export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string }

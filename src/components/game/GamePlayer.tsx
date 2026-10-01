@@ -3,6 +3,7 @@ import { getGame } from '../../games/registry';
 import type { GameApi, GameResult } from '../../games/types';
 import type { AgeGroup } from '../../lib/catalog';
 import { burst, cheer, line, speak } from '../../lib/fx';
+import { useVoiceId } from '../../lib/voice/player';
 import { starsFor } from '../../lib/rewards';
 import { isMuted, setMuted, sfx, vibrate } from '../../lib/sfx';
 import { Potroculo, type Mood } from '../ui/Potroculo';
@@ -38,6 +39,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
   const fbTimer = useRef<number | null>(null);
   const moodTimer = useRef<number | null>(null);
   const lastStreak = useRef(0);
+  const costume = useVoiceId();
 
   // Active-time counter (pauses when the tab is hidden)
   useEffect(() => {
@@ -200,7 +202,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
         {/* Mascot + bubble */}
         <div class="flex w-full max-w-[min(92vw,66vh)] items-end gap-2 md:w-72 md:max-w-none md:flex-col md:items-center">
           <div class="shrink-0">
-            <Potroculo mood={mood} size={ageGroup === 'peque' ? 96 : 76} class="md:!w-40 md:!h-auto" />
+            <Potroculo costume={costume} mood={mood} size={ageGroup === 'peque' ? 96 : 76} class="md:!w-40 md:!h-auto" />
           </div>
           {bubble && (
             <div key={bubble} class="ck-rise relative mb-3 flex-1 rounded-2xl border-2 border-violet-200 bg-white px-4 py-3 font-bold text-slate-700 shadow-sm md:mb-0 md:w-full md:text-lg">
@@ -216,7 +218,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
 
       {phase === 'saving' && (
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-white/90">
-          <div class="text-center"><Potroculo mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
+          <div class="text-center"><Potroculo costume={costume} mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
         </div>
       )}
 

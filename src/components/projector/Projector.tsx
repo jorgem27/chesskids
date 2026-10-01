@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Board, isPromotion, syncBoard } from '../../games/chess/Board';
 import { applyUci, isCorrectMove, type Puzzle } from '../../games/puzzle/logic';
 import { burst, cheer, sideCannons } from '../../lib/fx';
+import CoachPicker from '../student/CoachPicker';
+import { useVoiceId } from '../../lib/voice/player';
 import { distributeXp, fmtPoints, kidPoints, POINTS, XP_BUDGETS, type KidTally } from '../../lib/projector';
 import { sfx } from '../../lib/sfx';
 import { Potroculo } from '../ui/Potroculo';
@@ -41,6 +43,7 @@ function newNonce() {
 }
 
 export default function Projector({ classId, className, students, sources, backUrl, canAward }: Props) {
+  const costume = useVoiceId();
   const [phase, setPhase] = useState<'setup' | 'play' | 'podium'>('setup');
   const [teamCount, setTeamCount] = useState(2);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -109,7 +112,7 @@ export default function Projector({ classId, className, students, sources, backU
         <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
         <div class="mx-auto max-w-6xl">
           <div class="flex items-center gap-4">
-            <Potroculo mood="wave" size={130} />
+            <Potroculo costume={costume} mood="wave" size={130} />
             <div>
               <h1 class="font-display text-5xl font-extrabold">📽️ Modo proyector</h1>
               <p class="text-xl text-violet-200">{className} · ¡Equipos contra equipos!</p>
@@ -192,6 +195,7 @@ export default function Projector({ classId, className, students, sources, backU
               ) : <p class="mt-2 text-base text-violet-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
             </div>
           </div>
+          <div class="mt-6 rounded-3xl bg-white/10 p-4 md:p-6"><CoachPicker compact /></div>
           <div class="mt-8 text-center">
             {students.length > 0 && !playing && <p class="mb-3 text-lg font-bold text-amber-200">🪑 Nadie juega hoy: no se guardará ni se dará XP.</p>}
             <button disabled={!chosen.length} onClick={start} class="ck-btn ck-btn-orange px-16 py-6 text-3xl">¡Empezar el torneo! 🏁</button>
@@ -473,6 +477,7 @@ interface PodiumProps {
 type SaveState = { state: 'idle' | 'saving' | 'done' | 'error'; msg?: string; xp?: Map<number, number>; stickers?: number };
 
 function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgain, backUrl }: PodiumProps) {
+  const costume = useVoiceId();
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const tie = sorted.length > 1 && sorted[0].score === sorted[1].score;
   const kids = tallyList(teams, tallies);
@@ -527,7 +532,7 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
   const xpOf = (id: number) => save.xp?.get(id) ?? preview.get(id) ?? 0;
   return (
     <div class="ck-projector flex min-h-dvh flex-col items-center p-6">
-      <Potroculo mood="party" size={150} />
+      <Potroculo costume={costume} mood="party" size={150} />
       <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
       <div class="mt-8 flex items-end gap-4">
         {order.map((i) => {
