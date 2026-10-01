@@ -1,0 +1,22 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import LessonProjector from '../../../../components/projector/LessonProjector';
+import { classPerm, VISIBLE_ACTIVITY_SQL, type ClassRow } from '../../../../lib/db';
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const id = Number(Astro.params.id);
+const perm = await classPerm(db, coach.id, id);
+if (!perm) return Astro.redirect('/profe');
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(id).first<ClassRow>())!;
+const { results: students } = await db.prepare('SELECT id, display_name AS name, avatar FROM students WHERE class_id = ? AND archived = 0 ORDER BY display_name').bind(id).all<any>();
+const { results: acts } = await db.prepare(
+  `SELECT a.id, a.title, a.content_json FROM activities a WHERE a.club_id = ? AND ${VISIBLE_ACTIVITY_SQL} AND a.type = 'pgn-lesson' ORDER BY a.updated_at DESC`,
+).bind(cls.club_id, coach.id).all<any>();
+const lessons = acts.flatMap((a) => {
+  const c = JSON.parse(a.content_json);
+  return typeof c?.pgn === 'string' && /\[%ask/i.test(c.pgn) ? [{ id: a.id, title: a.title, pgn: c.pgn, questions: c.questions }] : [];
+});
+---
+<Base title={`Lección con dado · ${cls.name}`}>
+  <LessonProjector client:only="preact" classId={id} canAward={!!(perm.is_owner || perm.can_manage_students)} className={cls.name} students={students} lessons={lessons} backUrl={`/profe/clase/${id}`} />
+</Base>

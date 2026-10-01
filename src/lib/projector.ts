@@ -109,7 +109,8 @@ export interface TournamentInput {
 export function validateTournament(t: TournamentInput): string | null {
   const n = t.teams.length;
   const P = t.puzzlesPlayed;
-  if (n < 2 || n > 4) return 'Hacen falta entre 2 y 4 equipos';
+  // A single "team" is the whole class playing individually (interactive lessons).
+  if (n < 1 || n > 4) return 'Hacen falta entre 1 y 4 equipos';
   if (!Number.isInteger(P) || P < 1 || P > 200) return 'Número de problemas no válido';
   if (!t.kids.length) return 'No hay alumnos en los equipos';
   if (t.kids.length > 60) return 'Demasiados alumnos';

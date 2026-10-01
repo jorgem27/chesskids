@@ -149,6 +149,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
       <h1 class="font-display text-3xl font-extrabold">{cls.name}</h1>
       <p class="text-sm text-slate-500">Código <b class="font-mono text-violet-700">{cls.code}</b> · {students.length} alumnos</p>
     </div>
+    <a href={`/profe/clase/${id}/leccion`} class="ck-btn ck-btn-primary">🎲 Lección con dado</a>
     <a href={`/profe/clase/${id}/proyector`} class="ck-btn ck-btn-orange">📽️ Modo proyector</a>
   </div>
 

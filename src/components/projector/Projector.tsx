@@ -13,32 +13,32 @@ import { distributeXp, fmtPoints, kidPoints, POINTS, XP_BUDGETS, type KidTally }
 import { sfx } from '../../lib/sfx';
 import { Potroculo } from '../ui/Potroculo';
 
-interface Kid { id: number; name: string; avatar: string }
+export interface Kid { id: number; name: string; avatar: string }
 interface Source { id: number; title: string; type: string; puzzles: Puzzle[] }
 interface Props { classId: number; className: string; students: Kid[]; sources: Source[]; backUrl: string; canAward: boolean }
 
-const TEAM_PRESETS = [
+export const TEAM_PRESETS = [
   { name: 'Dragones', emoji: '🐲', color: '#ef4444' },
   { name: 'Unicornios', emoji: '🦄', color: '#a855f7' },
   { name: 'Cohetes', emoji: '🚀', color: '#0ea5e9' },
   { name: 'Leones', emoji: '🦁', color: '#f59e0b' },
 ];
 
-interface Team { name: string; emoji: string; color: string; members: Kid[]; score: number }
+export interface Team { name: string; emoji: string; color: string; members: Kid[]; score: number }
 /** Per-kid record for the current tournament. */
 interface Tally { picks: number; solved: number; points: number }
-type Tallies = Record<number, Tally>;
-const EMPTY: Tally = { picks: 0, solved: 0, points: 0 };
-const tallyList = (teams: Team[], tallies: Tallies): KidTally[] =>
+export type Tallies = Record<number, Tally>;
+export const EMPTY: Tally = { picks: 0, solved: 0, points: 0 };
+export const tallyList = (teams: Team[], tallies: Tallies): KidTally[] =>
   teams.flatMap((t, i) => t.members.map((m) => ({ studentId: m.id, team: i, ...(tallies[m.id] ?? EMPTY) })));
 
-function shuffle<T>(a: T[]): T[] {
+export function shuffle<T>(a: T[]): T[] {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
   return b;
 }
 
-function newNonce() {
+export function newNonce() {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
@@ -469,14 +469,16 @@ function Arena({ teams, setTeams, tallies, setTallies, pool, turnSeconds, onEnd 
   );
 }
 
-interface PodiumProps {
+export interface PodiumProps {
+  /** The whole class plays as one pseudo-team: show a ranking of kids instead of a team podium. */
+  solo?: boolean;
   teams: Team[]; tallies: Tallies; budget: number; canAward: boolean; classId: number;
   run: { nonce: string; startedAt: number }; played: number; onAgain: () => void; backUrl: string;
 }
 
 type SaveState = { state: 'idle' | 'saving' | 'done' | 'error'; msg?: string; xp?: Map<number, number>; stickers?: number };
 
-function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgain, backUrl }: PodiumProps) {
+export function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgain, backUrl, solo }: PodiumProps) {
   const costume = useVoiceId();
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const tie = sorted.length > 1 && sorted[0].score === sorted[1].score;
@@ -492,6 +494,7 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
     setTimeout(() => sfx.levelUp(), 700);
     sideCannons();
     setTimeout(sideCannons, 1200);
+    if (solo) return;
     if (tie) cheer('tie');
     else cheer('teamWin', { team: sorted[0].name });
   }, []);
@@ -533,8 +536,8 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
   return (
     <div class="ck-projector flex min-h-dvh flex-col items-center p-6">
       <Potroculo costume={costume} mood="party" size={150} />
-      <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
-      <div class="mt-8 flex items-end gap-4">
+      <h1 class="text-center font-display text-5xl font-extrabold md:text-6xl">{solo ? '¡Qué gran clase! 🎉' : tie ? '¡EMPATE! 🤝' : `¡Ganan ${sorted[0].emoji} ${sorted[0].name}!`}</h1>
+      <div class={`mt-8 items-end gap-4 ${solo ? 'hidden' : 'flex'}`}>
         {order.map((i) => {
           const t = sorted[i];
           const place = sorted.findIndex((x) => x.score === t.score); // ties share a step
@@ -556,7 +559,7 @@ function Podium({ teams, tallies, budget, canAward, classId, run, played, onAgai
           <div class="mt-4 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
             {sorted.map((t) => (
               <div key={t.name} class="rounded-3xl p-4" style={{ background: `${t.color}33`, border: `3px solid ${t.color}` }}>
-                <p class="font-display text-xl font-extrabold">{t.emoji} {t.name} · {t.score} pts</p>
+                <p class="font-display text-xl font-extrabold">{solo ? '🎓 Ranking' : `${t.emoji} ${t.name} · ${t.score} pts`}</p>
                 <ul class="mt-2 space-y-1">
                   {[...t.members].sort((a, b) => xpOf(b.id) - xpOf(a.id)).map((m) => {
                     const k = tallies[m.id] ?? EMPTY;

@@ -45,7 +45,8 @@ test('projector xp: budget is clamped', () => {
 test('projector validation', () => {
   const ok = { teams: [{ score: 4 }, { score: 3 }], kids: [kid(1, 0, 2, 2, 4), kid(2, 1, 1, 1, 3)], puzzlesPlayed: 3 };
   assert.equal(validateTournament(ok), null);
-  assert.ok(validateTournament({ ...ok, teams: [{ score: 4 }] }));
+  assert.ok(validateTournament({ ...ok, teams: [1, 2, 3, 4, 5].map(() => ({ score: 0 })) }), 'too many teams');
+  assert.ok(validateTournament({ ...ok, teams: [] }), 'no teams');
   assert.ok(validateTournament({ ...ok, teams: [{ score: 9 }, { score: 3 }] }), 'more points than puzzles');
   assert.ok(validateTournament({ ...ok, kids: [kid(1, 0, 2, 2, 4), kid(1, 1)] }), 'duplicate kid');
   assert.ok(validateTournament({ ...ok, kids: [kid(1, 0, 1, 2, 4)] }), 'solved > picks');
