@@ -4,21 +4,25 @@ import Welcome from '../../components/student/Welcome';
 import CoachPicker from '../../components/student/CoachPicker';
 import { GAME_META } from '../../games/meta';
 import { studentMissions, today, weeklyLeaderboard, xpToday, type ClassRow } from '../../lib/db';
-import { getStudentCampaigns } from '../../lib/campaigns';
+import { getStudentCampaigns, rewardById, studentUnlocks, themeById, unlockedTitle } from '../../lib/campaigns';
+import { countPendingMistakes, REVIEW_DAYS } from '../../lib/practice';
 import { addDays, dueLabel } from '../../lib/dates';
-import { DAILY_GOAL_XP, KINGDOMS, kingdomIndex, levelProgress, STICKERS } from '../../lib/rewards';
+import { DAILY_GOAL_XP, KINGDOMS, kingdomIndex, levelProgress, ratingBand, startRating, STICKERS, weeklyGoal } from '../../lib/rewards';
 import { PET_BASES } from '../../lib/pets';
 
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
 const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(s.class_id).first<ClassRow>())!;
 const t = today();
-const [missions, campaigns, board, dayXp, stickerCount, ...results] = await Promise.all([
+const [missions, campaigns, board, dayXp, stickerCount, unlocks, pendingFix, dailyDone, ...results] = await Promise.all([
   studentMissions(db, s.id, s.class_id),
   getStudentCampaigns(db, s.class_id, s.id),
   weeklyLeaderboard(db, s.class_id),
   xpToday(db, s.id),
   db.prepare('SELECT COUNT(*) AS n FROM student_stickers WHERE student_id = ?').bind(s.id).first<{ n: number }>(),
+  studentUnlocks(db, s.id),
+  countPendingMistakes(db, s.id, addDays(t, -REVIEW_DAYS)),
+  db.prepare("SELECT solved FROM practice_sessions WHERE student_id = ? AND kind = 'diario' AND day = ? AND finished_at IS NOT NULL LIMIT 1").bind(s.id, t).first<{ solved: number }>(),
   db.prepare('SELECT base_pet FROM student_pets WHERE student_id = ?').bind(s.id).first<{ base_pet: string }>(),
 ]);
 const activePetId = results[0]?.base_pet || 'peon';
@@ -39,6 +43,15 @@ const countOf = (m: (typeof missions)[number]) => {
   try { return GAME_META[m.type]?.count(JSON.parse(m.content_json)) ?? 0; } catch { return 0; }
 };
 const medal = ['🥇', '🥈', '🥉'];
+const title = unlockedTitle(unlocks);
+const rating = s.puzzle_rating || startRating(s.age_group);
+const band = ratingBand(rating);
+// Cooperative weekly challenge: puzzles solved by the whole class since Monday.
+const goal = weeklyGoal(cls.weekly_goal, board.length);
+const classSolved = board.reduce((n, r) => n + r.week_solved, 0);
+const mySolved = board.find((r) => r.id === s.id)?.week_solved ?? 0;
+const goalPctClass = Math.min(1, classSolved / goal);
+const helpers = board.filter((r) => r.week_solved > 0);
 ---
 <StudentLayout title="Inicio · ChessKids">
   {hola && <Welcome client:load name={s.display_name} missions={pending.length} />}
@@ -51,6 +64,7 @@ const medal = ['🥇', '🥈', '🥉'];
         <div class="min-w-0 flex-1">
           <p class="text-sm font-bold opacity-80">{cls.emoji} {cls.name}</p>
           <h1 class="truncate font-display text-3xl font-extrabold md:text-4xl">¡Hola, {s.display_name}!</h1>
+          {title && <p class="mt-0.5 inline-block rounded-full bg-amber-300 px-2.5 py-0.5 text-xs font-extrabold text-amber-900">👑 {title}</p>}
           <div class="mt-2 flex items-center gap-2">
             <span class="rounded-full bg-white px-2.5 py-0.5 font-display text-sm font-extrabold text-violet-700">Nivel {lp.level}</span>
             <div class="h-3 flex-1 overflow-hidden rounded-full bg-white/30"><div class="h-full rounded-full bg-amber-300" style={`width:${Math.max(3, lp.pct * 100)}%`}></div></div>
@@ -81,31 +95,78 @@ const medal = ['🥇', '🥈', '🥉'];
     </div>
   </section>
 
-  <!-- Campaigns (Overworld Maps) -->
+  <!-- Practice: daily puzzle, review of mistakes, rated training -->
+  <section class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <a href="/app/practica/diario" class="group ck-rise block">
+      <div class={`relative h-full overflow-hidden rounded-3xl p-4 shadow-[0_6px_0_rgb(0_0_0/0.12)] transition group-hover:-translate-y-1 group-active:translate-y-1 ${dailyDone ? 'bg-amber-100 text-amber-900' : 'bg-gradient-to-br from-amber-600 to-orange-700 text-white'}`}>
+        <span class="absolute -right-2 -top-3 text-7xl opacity-25" aria-hidden="true">🌞</span>
+        <p class="text-3xl">{dailyDone ? '✅' : '🌞'}</p>
+        <h3 class="font-display text-xl font-extrabold">Problema del día</h3>
+        <p class="text-sm font-bold">{dailyDone ? '¡Hecho! Mañana hay otro' : '¡Uno nuevo cada día!'}</p>
+      </div>
+    </a>
+    <a href="/app/practica/repaso" class="group ck-rise block" style="animation-delay:.05s">
+      <div class="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 to-pink-700 p-4 text-white shadow-[0_6px_0_rgb(0_0_0/0.12)] transition group-hover:-translate-y-1 group-active:translate-y-1">
+        <span class="absolute -right-2 -top-3 text-7xl opacity-25" aria-hidden="true">🩹</span>
+        <p class="text-3xl">🔁</p>
+        <h3 class="font-display text-xl font-extrabold">Practica tus fallos {pendingFix > 0 && <span class="ml-1 rounded-full bg-white px-2 text-base text-rose-600">{pendingFix}</span>}</h3>
+        <p class="text-sm font-bold">{pendingFix > 0 ? '¡Arréglalos y gana XP!' : '¡No tienes fallos pendientes!'}</p>
+      </div>
+    </a>
+    <a href="/app/practica/entrena" class="group ck-rise block" style="animation-delay:.1s">
+      <div class="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-600 p-4 text-white shadow-[0_6px_0_rgb(0_0_0/0.12)] transition group-hover:-translate-y-1 group-active:translate-y-1">
+        <span class="absolute -right-2 -top-3 text-7xl opacity-25" aria-hidden="true">🏋️</span>
+        <p class="text-3xl">{band.emoji}</p>
+        <h3 class="font-display text-xl font-extrabold">Entrena</h3>
+        <p class="text-sm font-bold">Tu nivel: {rating} · {band.name}</p>
+      </div>
+    </a>
+  </section>
+
+  <!-- Weekly cooperative challenge -->
+  <section class="ck-card ck-rise mt-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <span class="text-4xl">{goalPctClass >= 1 ? '🏆' : '🤝'}</span>
+      <div class="min-w-0 flex-1">
+        <h2 class="font-display text-xl font-extrabold text-slate-800">Reto de la clase</h2>
+        <p class="text-sm font-bold text-slate-600">{goalPctClass >= 1 ? '¡Lo habéis conseguido! Sois un equipazo 🎉' : `Entre todos, ${goal} problemas esta semana`}</p>
+      </div>
+      <span class="font-display text-2xl font-extrabold text-emerald-600 tabular-nums">{Math.min(classSolved, goal)}/{goal}</span>
+    </div>
+    <div class="mt-3 h-5 overflow-hidden rounded-full bg-emerald-50 ring-1 ring-emerald-100">
+      <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-400" style={`width:${Math.max(3, goalPctClass * 100)}%`}></div>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-1">
+      {helpers.slice(0, 16).map((h) => <span class={`text-2xl ${h.id === s.id ? 'rounded-full ring-2 ring-violet-400' : ''}`} title={h.display_name}>{h.avatar}</span>)}
+      <span class="ml-1 text-sm font-bold text-slate-600">{mySolved > 0 ? `Tú has aportado ${mySolved} ${mySolved === 1 ? 'problema' : 'problemas'} 💪` : '¡Resuelve un problema para ayudar!'}</span>
+    </div>
+  </section>
+
+  <!-- Campaigns (adventure maps) -->
   {campaigns.length > 0 && (
     <section class="mt-6">
-      <h2 class="mb-3 flex items-center gap-2 font-display text-2xl font-extrabold text-slate-800">🗺️ Campañas de Aventuras</h2>
+      <h2 class="mb-3 flex items-center gap-2 font-display text-2xl font-extrabold text-slate-800">🗺️ Mapas de aventura</h2>
       <div class="grid gap-4 sm:grid-cols-2">
         {campaigns.map((c, i) => {
-          const completed = c.completedNodeIds.size;
           const total = c.nodes.length;
-          const pct = total ? (completed / total) * 100 : 0;
+          const completed = c.completedNodeIds.size;
+          const theme = themeById(c.theme);
+          const reward = rewardById(c.reward_type);
+          const next = c.nodes.find((n) => !c.completedNodeIds.has(n.id));
+          const dark = theme.id === 'espacio' || theme.id === 'volcan';
           return (
             <a href={`/app/campanas/${c.id}`} class="group ck-rise block" style={`animation-delay:${i * 0.06}s`}>
-              <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white shadow-[0_6px_0_rgb(0_0_0/0.15)] transition group-hover:-translate-y-1 group-active:translate-y-1">
-                <span class="absolute -right-3 -top-4 text-8xl opacity-25 transition group-hover:rotate-12">🗺️</span>
-                <h3 class="mt-1 font-display text-2xl font-extrabold leading-tight drop-shadow">{c.title}</h3>
-                {c.description && <p class="mt-1 text-sm font-bold opacity-90">{c.description}</p>}
-                
-                <div class="mt-4 flex items-center justify-between">
-                  <span class="text-sm font-bold opacity-90">{completed} / {total} superados</span>
-                  <div class="flex-1 ml-4 mr-2 h-3 overflow-hidden rounded-full bg-black/20">
-                    <div class="h-full rounded-full bg-amber-400" style={`width:${pct}%`}></div>
-                  </div>
+              <div class={`relative overflow-hidden rounded-3xl p-5 shadow-[0_6px_0_rgb(0_0_0/0.15)] transition group-hover:-translate-y-1 group-active:translate-y-1 ${dark ? 'text-white' : 'text-slate-800'}`} style={`background:${theme.bg}`}>
+                <span class="absolute -right-2 -top-3 text-8xl opacity-30 transition group-hover:rotate-12" aria-hidden="true">{theme.goal}</span>
+                <div class="flex items-center gap-3">
+                  <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-3xl shadow">{c.emoji}</span>
+                  <h3 class="font-display text-2xl font-extrabold leading-tight">{c.title}</h3>
                 </div>
-                
-                <div class="mt-3 flex justify-end">
-                  <span class="rounded-xl bg-white px-4 py-1.5 font-display font-extrabold text-purple-700">Ver Mapa ➔</span>
+                <p class="mt-2 text-sm font-bold">{next ? `Siguiente: ${GAME_META[next.activity_type]?.emoji ?? '🎮'} ${next.activity_title}` : total ? '¡Mapa completado! 🎉' : 'Mapa en preparación'}</p>
+                <div class="mt-3 flex items-center gap-3">
+                  <div class="h-3 flex-1 overflow-hidden rounded-full bg-black/15"><div class="h-full rounded-full bg-amber-400" style={`width:${total ? (completed / total) * 100 : 0}%`}></div></div>
+                  <span class="text-sm font-extrabold tabular-nums">{completed}/{total}</span>
+                  <span class="text-2xl" title={reward.name}>{completed === total && total ? reward.emoji : '🎁'}</span>
                 </div>
               </div>
             </a>

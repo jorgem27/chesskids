@@ -1,91 +1,122 @@
 ---
 import StudentLayout from '../../../layouts/StudentLayout.astro';
-import { getStudentCampaigns, CAMPAIGN_REWARDS } from '../../../lib/campaigns';
+import { getStudentCampaigns, isCampaignComplete, mapLayout, mapPath, nodeStates, rewardById, themeById } from '../../../lib/campaigns';
 import { GAME_META } from '../../../games/meta';
 
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
-const campaignId = parseInt(Astro.params.id as string, 10);
+const campaignId = Number(Astro.params.id);
 
-// We fetch all assigned campaigns to ensure this student has access to this campaign
-const campaigns = await getStudentCampaigns(db, s.class_id, s.id);
-const campaign = campaigns.find(c => c.id === campaignId);
+// Only campaigns assigned to the student's class.
+const [campaign] = await getStudentCampaigns(db, s.class_id, s.id, campaignId);
+if (!campaign) return Astro.redirect('/app');
 
-if (!campaign) {
-  return Astro.redirect('/app');
-}
+const reward = rewardById(campaign.reward_type);
+const theme = themeById(campaign.theme);
+const nodes = campaign.nodes;
+const ids = nodes.map((n) => n.id);
+const states = nodeStates(ids, campaign.completedNodeIds);
+const finished = isCampaignComplete(ids, campaign.completedNodeIds);
+const doneCount = campaign.completedNodeIds.size;
+// Pixel room: goal + chest on top (~170px), start flag and the first label at the bottom (~110px).
+const height = Math.max(580, nodes.length * 135 + 300);
+const pts = mapLayout(nodes.length, (195 / height) * 100, ((height - 110) / height) * 100);
+const path = mapPath(pts);
+const dark = theme.id === 'espacio' || theme.id === 'volcan';
 
-const reward = CAMPAIGN_REWARDS.find(r => r.id === campaign.reward_type) || CAMPAIGN_REWARDS[0];
-const allCompleted = campaign.nodes.length > 0 && campaign.completedNodeIds.size === campaign.nodes.length;
-
-// Ensure nodes are sorted properly. For simplicity, we assume sequential IDs or x/y coords
-const nodes = [...campaign.nodes].sort((a, b) => a.id - b.id);
-
+// Scenery: emojis spread over the map (golden-ratio steps), on the side away from the path.
+const deco = Array.from({ length: Math.max(4, Math.round(nodes.length * 1.4)) }, (_, i) => {
+  const y = 6 + ((i * 0.618034) % 1) * 86;
+  const nearest = pts.length ? pts.reduce((a, p) => (Math.abs(p.y - y) < Math.abs(a.y - y) ? p : a), pts[0]) : { x: 50, y };
+  const x = nearest.x > 50 ? 4 + ((i * 0.381966) % 1) * 20 : 76 + ((i * 0.381966) % 1) * 18;
+  return { x, y, emoji: theme.deco[i % theme.deco.length], size: 1.6 + (i % 4) / 4, delay: (i % 5) * 0.4 };
+});
 ---
 <StudentLayout title={`${campaign.title} · ChessKids`}>
-  <div class="mb-4">
-    <a href="/app" class="text-sm font-bold text-violet-600 hover:underline">← Volver al inicio</a>
-  </div>
+  <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-violet-700 hover:underline">← Volver al inicio</a>
 
-  <h1 class="ck-rise text-center font-display text-4xl font-extrabold text-violet-800">{campaign.title}</h1>
-  <p class="text-center font-bold text-slate-500">{campaign.description}</p>
-  
-  <div class="mt-4 flex items-center justify-center">
-    <div class={`rounded-2xl border-4 ${allCompleted ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-slate-50'} px-6 py-3 text-center`}>
-      <p class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Recompensa final</p>
-      <div class="mt-1 flex items-center gap-3">
-        <span class="text-4xl">{reward.emoji}</span>
-        <div class="text-left">
+  <!-- Header -->
+  <section class="ck-card ck-rise mt-2 !p-0 overflow-hidden">
+    <div class="flex items-center gap-4 p-4 md:p-5" style={`background:${theme.bg}`}>
+      <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-5xl shadow">{campaign.emoji}</span>
+      <div class={`min-w-0 flex-1 ${dark ? 'text-white' : 'text-slate-800'}`}>
+        <h1 class="font-display text-3xl font-extrabold leading-tight drop-shadow-sm">{campaign.title}</h1>
+        {campaign.description && <p class="mt-0.5 font-bold opacity-90">{campaign.description}</p>}
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-4 p-4">
+      <div class="min-w-48 flex-1">
+        <p class="text-sm font-extrabold text-slate-600">{finished ? '¡Campaña completada! 🎉' : `${doneCount} de ${nodes.length} niveles superados`}</p>
+        <div class="mt-1 h-4 overflow-hidden rounded-full bg-slate-100">
+          <div class="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={`width:${nodes.length ? Math.max(4, (doneCount / nodes.length) * 100) : 0}%`}></div>
+        </div>
+      </div>
+      <div class={`flex items-center gap-3 rounded-2xl border-2 px-3 py-2 ${finished ? 'border-amber-400 bg-amber-50' : 'border-dashed border-slate-300 bg-slate-50'}`}>
+        <span class={`text-4xl ${finished ? '' : 'grayscale-[.4]'}`}>{finished ? reward.emoji : '🎁'}</span>
+        <div>
+          <p class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Premio final</p>
           <p class="font-display font-extrabold text-slate-800">{reward.name}</p>
-          <p class="text-xs font-bold text-slate-500">{allCompleted ? '¡Conseguida!' : 'Supera todos los niveles para ganarla'}</p>
+          <p class="text-xs font-bold text-slate-500">{finished ? '¡Ya es tuyo!' : 'Supera todos los niveles'}</p>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="relative mx-auto mt-8 max-w-lg overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-green-300 via-emerald-200 to-teal-200 px-4 py-10 shadow-inner">
-    <span class="ck-float absolute left-4 top-6 text-5xl opacity-70">☁️</span>
-    <span class="ck-float absolute right-6 top-40 text-4xl opacity-60" style="animation-delay:1.2s">☁️</span>
-    <span class="ck-float absolute left-8 top-[55%] text-4xl opacity-60" style="animation-delay:.6s">☁️</span>
-    
-    <div class="relative flex flex-col" style={`height: ${Math.max(600, nodes.length * 150)}px`}>
+  {nodes.length === 0 ? (
+    <div class="ck-card mt-6 text-center"><p class="text-5xl">🧭</p><p class="mt-2 font-bold text-slate-600">Tu profe aún está preparando este mapa. ¡Vuelve pronto!</p></div>
+  ) : (
+    <div class="relative mx-auto mt-6 max-w-xl overflow-hidden rounded-[2.5rem] shadow-inner ring-4 ring-white" style={`background:${theme.bg}; height:${height}px`}>
+      {deco.map((d) => (
+        <span aria-hidden="true" class="ck-float pointer-events-none absolute select-none opacity-80" style={`left:${d.x}%; top:${d.y}%; font-size:${d.size}rem; animation-delay:${d.delay}s`}>{d.emoji}</span>
+      ))}
+
+      <!-- Goal landmark + chest at the end of the path -->
+      <div class="absolute left-1/2 top-3 flex -translate-x-1/2 flex-col items-center">
+        <span class="text-6xl drop-shadow-lg">{theme.goal}</span>
+        <span class={`-mt-2 whitespace-nowrap rounded-full px-3 py-1 text-sm font-extrabold shadow ${finished ? 'bg-amber-300 text-amber-900' : 'bg-white/90 text-slate-600'}`}>{finished ? `${reward.emoji} ¡Conseguido!` : '🎁 Premio final'}</span>
+      </div>
+
       <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d={
-          'M ' + nodes.map((n, idx) => {
-            // Default x positions for a winding path if not set by DB
-            const x = n.x_pos > 0 ? n.x_pos : (idx % 2 === 0 ? 30 : 70); 
-            // We draw from bottom to top (highest index is at the top)
-            const yPct = 100 - ((idx + 0.5) / nodes.length * 100);
-            return `${x} ${yPct}`;
-          }).join(' L ')
-        } stroke="#fff" stroke-width="3" stroke-dasharray="1 3" stroke-linecap="round" fill="none" opacity=".8" vector-effect="non-scaling-stroke" />
+        <path d={path} stroke="rgb(0 0 0 / .12)" stroke-width="22" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" />
+        <path d={path} stroke={theme.path} stroke-width="14" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" />
+        <path d={path} stroke="rgb(0 0 0 / .18)" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" />
       </svg>
-      
-      {nodes.map((n, idx) => {
-        const isCompleted = campaign.completedNodeIds.has(n.id);
-        const isNext = !isCompleted && (idx === 0 || campaign.completedNodeIds.has(nodes[idx - 1].id));
-        const isLocked = !isCompleted && !isNext;
-        
-        const x = n.x_pos > 0 ? n.x_pos : (idx % 2 === 0 ? 30 : 70);
-        // Calculate top based on percentage so it matches the SVG
-        const yPct = 100 - ((idx + 0.5) / nodes.length * 100);
-        
-        const meta = GAME_META[n.activity_type];
-        
-        return (
-          <div class="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={`left:${x}%; top:${yPct}%`}>
-            {isNext && <span class="absolute -top-12 animate-bounce text-5xl drop-shadow-lg">{s.avatar}</span>}
-            
-            <a href={isLocked ? '#' : `/app/jugar/${n.activity_id}?camp=${n.id}`} class={`group relative flex h-20 w-20 items-center justify-center rounded-full border-4 text-4xl shadow-[0_6px_0_rgb(0_0_0/0.2)] transition-transform ${!isLocked ? 'hover:-translate-y-1 hover:scale-105 active:translate-y-1' : 'cursor-not-allowed'} ${isCompleted ? 'border-amber-400 bg-amber-300' : isNext ? 'border-violet-400 bg-white ring-8 ring-violet-300/50' : 'border-slate-300 bg-slate-200 grayscale'}`}>
-              {isCompleted ? '⭐' : isLocked ? '🔒' : (meta?.emoji || '🎮')}
-            </a>
-            
-            <div class={`mt-2 whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-extrabold shadow ${isCompleted ? 'bg-amber-100 text-amber-800' : isNext ? 'bg-white text-violet-700' : 'bg-slate-200 text-slate-500'}`}>
-              Nivel {idx + 1}
-            </div>
-          </div>
-        );
-      })}
+
+      <ol class="absolute inset-0">
+        {nodes.map((n, idx) => {
+          const st = states[idx];
+          const meta = GAME_META[n.activity_type];
+          const stars = campaign.bestStars.get(n.activity_id) ?? 0;
+          const p = pts[idx];
+          const label = `Nivel ${idx + 1}: ${n.activity_title}`;
+          const circle = `relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border-4 text-4xl shadow-[0_6px_0_rgb(0_0_0/0.2)] transition-transform`;
+          return (
+            <li class="absolute flex w-32 -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={`left:${p.x}%; top:${p.y}%`} id={st === 'next' ? 'ck-next' : undefined}>
+              {st === 'next' && <span class="ck-hop absolute -top-14 left-1/2 text-5xl drop-shadow-lg" aria-hidden="true">{s.avatar}</span>}
+              {st === 'locked' ? (
+                <div class={`${circle} border-slate-300 bg-slate-200 text-3xl grayscale`} aria-label={`${label} (bloqueado)`} title="Supera el nivel anterior para abrirlo">🔒</div>
+              ) : (
+                <a href={`/app/jugar/${n.activity_id}?camp=${n.id}`} aria-label={label}
+                  class={`${circle} hover:-translate-y-1 active:translate-y-1 ${st === 'done' ? 'border-amber-400 bg-gradient-to-b from-amber-200 to-amber-400' : 'ck-node-next border-white bg-gradient-to-b from-violet-500 to-fuchsia-500'}`}>
+                  {meta?.emoji ?? '🎮'}
+                  {st === 'done' && <span class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-base font-black text-white ring-2 ring-white">✓</span>}
+                </a>
+              )}
+              <div class={`mt-2 max-w-full rounded-2xl px-3 py-1 text-center shadow ${st === 'next' ? 'bg-violet-600 text-white' : st === 'done' ? 'bg-white text-slate-800' : 'bg-white/90 text-slate-600'}`}>
+                <p class="text-xs font-black uppercase tracking-wide">{st === 'next' ? '¡Te toca!' : st === 'locked' ? `🔒 Nivel ${idx + 1}` : `Nivel ${idx + 1}`}</p>
+                <p class="line-clamp-2 text-sm font-extrabold leading-tight">{n.activity_title}</p>
+                {st === 'done' && <p class="text-base leading-none" aria-label={`${stars} estrellas`}>{[0, 1, 2].map((k) => <span class={stars > k ? '' : 'opacity-25 grayscale'}>⭐</span>)}</p>}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <span class="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-white/85 px-3 py-1 text-xs font-extrabold text-slate-600 shadow">🚩 Salida</span>
     </div>
-  </div>
+  )}
+
+  <script is:inline>
+    document.getElementById('ck-next')?.scrollIntoView({ block: 'center' });
+  </script>
 </StudentLayout>

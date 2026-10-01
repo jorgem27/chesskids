@@ -13,6 +13,9 @@ export interface Puzzle {
   moves: string[]; // UCI: student, reply, student, reply, ... (ends with a student move)
   prompt?: string; // e.g. "Mate en 2"
   steps?: PuzzleStep[];
+  /** Set when the puzzle came from the Lichess database: lets reviews find similar puzzles. */
+  lichessId?: string;
+  rating?: number;
 }
 
 export type PuzzleMode = 'hint' | 'blitz';

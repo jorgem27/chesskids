@@ -1,0 +1,18 @@
+---
+// Tiny static board from a FEN (no JS, no chessground): for coach reports.
+interface Props { fen: string; size?: number; flip?: boolean }
+const { fen, size = 120, flip } = Astro.props;
+// Filled glyphs for both colors (white ones get a white fill + dark outline): readable when small.
+const GLYPH: Record<string, string> = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+const [placement = '', turn = 'w'] = fen.split(' ');
+const rows = placement.split('/').map((r) => r.replace(/\d/g, (d) => '.'.repeat(Number(d))).padEnd(8, '.').slice(0, 8).split(''));
+while (rows.length < 8) rows.push('........'.split(''));
+// Show the board from the side to move (that's the student's side in our puzzles).
+const black = flip ?? turn === 'b';
+const view = black ? rows.slice().reverse().map((r) => r.slice().reverse()) : rows;
+---
+<div class="inline-grid grid-cols-8 overflow-hidden rounded-md ring-1 ring-slate-300" style={`width:${size}px;height:${size}px`} role="img" aria-label={`Posición: ${fen}`}>
+  {view.flatMap((row, y) => row.map((c, x) => (
+    <span class="flex items-center justify-center leading-none" style={`background:${(x + y) % 2 ? '#86c06c' : '#eef6d9'};font-size:${size / 9}px;color:${c !== '.' && c === c.toUpperCase() ? '#fff' : '#111'};text-shadow:${c !== '.' && c === c.toUpperCase() ? '0 0 1px #000,0 0 1px #000,0 0 1px #000' : 'none'}`}>{GLYPH[c.toLowerCase()] ?? ''}</span>
+  )))}
+</div>

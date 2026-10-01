@@ -3,6 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import GamePlayer from '../../../components/game/GamePlayer';
 import type { ActivityRow } from '../../../lib/db';
 import type { AgeGroup } from '../../../lib/catalog';
+import { checkStudentNode, rewardById, studentUnlocks } from '../../../lib/campaigns';
 
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
@@ -16,9 +17,21 @@ const a = await db.prepare(
 ).bind(id, s.class_id, s.class_id).first<ActivityRow>();
 if (!a) return Astro.redirect('/app');
 const asg = Number(Astro.url.searchParams.get('a')) || null;
-const campNode = Number(Astro.url.searchParams.get('camp')) || null;
+// A campaign level must belong to this class and be unlocked; otherwise back to its map.
+const campParam = Number(Astro.url.searchParams.get('camp')) || null;
+let campNode: number | null = null;
+let exitUrl = '/app';
+if (campParam) {
+  const node = await checkStudentNode(db, s.id, s.class_id, campParam, a.id);
+  if (!node) return Astro.redirect('/app');
+  exitUrl = `/app/campanas/${node.campaignId}`;
+  if (!node.playable) return Astro.redirect(exitUrl);
+  campNode = node.nodeId;
+}
+const unlocks = await studentUnlocks(db, s.id);
+const board = unlocks.has(rewardById('theme_space').id) ? 'space' : undefined;
 const activity = { id: a.id, type: a.type, title: a.title, content: JSON.parse(a.content_json) };
 ---
 <Base title={`${a.title} · ChessKids`} age={s.age_group}>
-  <GamePlayer client:only="preact" activity={activity} assignmentId={asg} campaignNodeId={campNode} ageGroup={s.age_group as AgeGroup} exitUrl="/app" />
+  <GamePlayer client:only="preact" activity={activity} assignmentId={asg} campaignNodeId={campNode} ageGroup={s.age_group as AgeGroup} exitUrl={exitUrl} board={board} />
 </Base>

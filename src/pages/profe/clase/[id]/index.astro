@@ -2,10 +2,12 @@
 import CoachLayout from '../../../../layouts/CoachLayout.astro';
 import StudentManager from '../../../../components/coach/StudentManager';
 import AssignPanel from '../../../../components/coach/AssignPanel';
+import ReviewBuilder from '../../../../components/coach/ReviewBuilder';
 import { GAME_META } from '../../../../games/meta';
-import { classPerm, today, VISIBLE_ACTIVITY_SQL, type ClassRow } from '../../../../lib/db';
+import { classPerm, coachClasses, today, VISIBLE_ACTIVITY_SQL, weeklyLeaderboard, type ClassRow } from '../../../../lib/db';
+import { themeStats } from '../../../../lib/insights';
 import { addDays, relativeDay } from '../../../../lib/dates';
-import { levelFromXp } from '../../../../lib/rewards';
+import { levelFromXp, weeklyGoal } from '../../../../lib/rewards';
 import { fmtPoints, kidPoints } from '../../../../lib/projector';
 
 const coach = Astro.locals.coach!;
@@ -36,7 +38,11 @@ const { results: assignments } = await db.prepare(
 ).bind(id).all<any>();
 
 let library: any[] = [];
+let otherClasses: { id: number; name: string; emoji: string }[] = [];
 if (tab === 'deberes') {
+  otherClasses = (await coachClasses(db, coach.id))
+    .filter((c) => c.id !== id && c.club_id === cls.club_id && (c.is_owner || c.can_create_content))
+    .map((c) => ({ id: c.id, name: c.name, emoji: c.emoji }));
   const { results } = await db.prepare("SELECT a.id, a.type, a.title, a.content_json, a.visibility FROM activities a WHERE a.club_id = ? AND " + VISIBLE_ACTIVITY_SQL + " ORDER BY a.updated_at DESC").bind(cls.club_id, coach.id).all<any>();
   library = results.map((r) => ({ id: r.id, type: r.type, title: r.title, visibility: r.visibility, count: (() => { try { return GAME_META[r.type]?.count(JSON.parse(r.content_json)) ?? 0; } catch { return 0; } })() }));
 }
@@ -49,6 +55,60 @@ if (tab === 'progreso' && canView) {
     `SELECT at.student_id, at.activity_id, MAX(at.stars) AS stars FROM attempts at JOIN students s ON s.id = at.student_id WHERE s.class_id = ? GROUP BY at.student_id, at.activity_id`,
   ).bind(id).all<{ student_id: number; activity_id: number; stars: number }>();
   grid = new Map(results.map((r) => [`${r.student_id}:${r.activity_id}`, r.stars]));
+}
+
+// Progress extras: weekly challenge, weak themes (last 30 days) and failed puzzles for a review.
+let week = { solved: 0, goal: 0 };
+let classThemes: ReturnType<typeof themeStats> = [];
+let failedPuzzles = 0;
+if (tab === 'progreso' && canView) {
+  const since = addDays(t, -30);
+  const [board, practiceThemes, failed] = await Promise.all([
+    weeklyLeaderboard(db, id),
+    db.prepare(
+      `SELECT p.themes, ir.ok FROM item_results ir JOIN students s ON s.id = ir.student_id AND s.class_id = ? AND s.archived = 0
+       JOIN lichess_puzzles p ON p.id = ir.lichess_id WHERE ir.day >= ? ORDER BY ir.id DESC LIMIT 1500`,
+    ).bind(id, since).all<{ themes: string; ok: number }>(),
+    db.prepare(
+      `SELECT COUNT(DISTINCT ir.activity_id || ':' || ir.item) AS n FROM item_results ir
+       JOIN students s ON s.id = ir.student_id AND s.class_id = ? AND s.archived = 0
+       JOIN activities a ON a.id = ir.activity_id AND a.type IN ('puzzle-hint', 'puzzle-blitz')
+       WHERE ir.source = 'activity' AND ir.ok = 0 AND ir.day >= ?`,
+    ).bind(id, addDays(t, -14)).first<{ n: number }>(),
+  ]);
+  week = { solved: board.reduce((n, r) => n + r.week_solved, 0), goal: weeklyGoal(cls.weekly_goal, board.length) };
+  failedPuzzles = perm.is_owner || perm.can_create_content ? failed?.n ?? 0 : 0;
+
+  // Homework puzzles that came from Lichess also tell us about themes (first try per student and puzzle).
+  const rows = practiceThemes.results.map((r) => ({ themes: r.themes, ok: !!r.ok }));
+  const lichessByItem = new Map<string, string>();
+  const asgIds = [...new Set(gridAsg.map((a) => a.activity_id))];
+  if (asgIds.length) {
+    const { results: acts } = await db.prepare(
+      `SELECT id, content_json FROM activities WHERE id IN (${asgIds.map(() => '?').join(',')}) AND type IN ('puzzle-hint', 'puzzle-blitz')`,
+    ).bind(...asgIds).all<{ id: number; content_json: string }>();
+    for (const a of acts) {
+      try { (JSON.parse(a.content_json).puzzles ?? []).forEach((p: any, i: number) => { if (p?.lichessId) lichessByItem.set(`${a.id}:${i}`, p.lichessId); }); } catch { /* skip */ }
+    }
+  }
+  if (lichessByItem.size) {
+    const lids = [...new Set(lichessByItem.values())].slice(0, 300);
+    const [firsts, meta] = await db.batch<any>([
+      db.prepare(
+        `SELECT r.activity_id, r.item, r.ok FROM item_results r JOIN (
+           SELECT MIN(ir.id) AS id FROM item_results ir JOIN students s ON s.id = ir.student_id AND s.class_id = ? AND s.archived = 0
+           WHERE ir.source = 'activity' AND ir.day >= ? AND ir.activity_id IN (${asgIds.map(() => '?').join(',')}) GROUP BY ir.student_id, ir.activity_id, ir.item
+         ) f ON f.id = r.id`,
+      ).bind(id, since, ...asgIds),
+      db.prepare(`SELECT id, themes FROM lichess_puzzles WHERE id IN (${lids.map(() => '?').join(',')})`).bind(...lids),
+    ]);
+    const themesById = new Map((meta.results as { id: string; themes: string }[]).map((m) => [m.id, m.themes]));
+    for (const f of firsts.results as { activity_id: number; item: number; ok: number }[]) {
+      const th = themesById.get(lichessByItem.get(`${f.activity_id}:${f.item}`) ?? '');
+      if (th) rows.push({ themes: th, ok: !!f.ok });
+    }
+  }
+  classThemes = themeStats(rows, 4).slice(0, 6);
 }
 
 // Projector tournaments: last 20, with every kid's record.
@@ -104,6 +164,15 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
           <p data-error class="text-sm font-bold text-rose-600"></p>
           <button type="submit" class="ck-btn ck-btn-primary">Guardar nombre</button>
         </form>
+        <form data-api="/api/coach/classes" data-method="PATCH" class="space-y-2">
+          <input type="hidden" name="classId" value={id} />
+          <label class="block text-sm font-bold">🤝 Reto semanal de la clase (problemas entre todos)
+            <input name="weeklyGoal" type="number" min="0" max="5000" value={cls.weekly_goal || ''} placeholder={`Automático: ${weeklyGoal(0, students.length)}`} class="ck-input mt-1 w-full" />
+          </label>
+          <p class="text-xs text-slate-500">Déjalo vacío para que se calcule solo (12 por alumno).</p>
+          <p data-error class="text-sm font-bold text-rose-600"></p>
+          <button type="submit" class="ck-btn ck-btn-primary">Guardar reto</button>
+        </form>
         <form data-api="/api/coach/classes" data-method="DELETE" data-redirect="/profe" class="space-y-2 rounded-2xl bg-rose-50 p-3">
           <input type="hidden" name="classId" value={id} />
           <p class="text-sm font-bold text-rose-700">🗑️ Borrar la clase</p>
@@ -122,28 +191,48 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
 
   <div class="mt-5">
     {tab === 'alumnos' && (
-      <StudentManager client:load classId={id} classCode={cls.code} className={cls.name} origin={origin} canManage={canManage} students={students} />
+      <StudentManager client:load classId={id} classCode={cls.code} className={cls.name} origin={origin} canManage={canManage} canView={canView} students={students} />
     )}
 
     {tab === 'deberes' && (
       <AssignPanel client:load classId={id} className={cls.name} classCode={cls.code} origin={origin} canCreate={canCreate}
-        library={library} assignments={assignments} studentCount={students.length} today={t} nextWeek={addDays(t, 7)} />
+        library={library} assignments={assignments} studentCount={students.length} today={t} nextWeek={addDays(t, 7)} otherClasses={otherClasses} />
     )}
 
     {tab === 'progreso' && canView && (
+      <div class="space-y-6">
+      <div class="grid gap-4 lg:grid-cols-3">
+        <section class="ck-card">
+          <h2 class="font-display text-lg font-extrabold">🤝 Reto de la semana</h2>
+          <p class="mt-1 font-display text-3xl font-extrabold text-emerald-600">{Math.min(week.solved, week.goal)}<span class="text-lg text-slate-400">/{week.goal}</span></p>
+          <div class="mt-2 h-3 overflow-hidden rounded-full bg-emerald-50"><div class="h-full rounded-full bg-emerald-500" style={`width:${Math.min(100, (week.solved / Math.max(1, week.goal)) * 100)}%`}></div></div>
+          <p class="mt-1 text-xs text-slate-500">Problemas resueltos por toda la clase desde el lunes.{perm.is_owner && ' Cámbialo en ⚙️ Ajustes.'}</p>
+        </section>
+        <section class="ck-card">
+          <h2 class="font-display text-lg font-extrabold">🎯 Temas a reforzar</h2>
+          {classThemes.length ? (
+            <ul class="mt-2 space-y-1 text-sm">
+              {classThemes.map((th) => (
+                <li class="flex items-center gap-2"><span class="w-6">{th.emoji}</span><span class="flex-1">{th.label}</span><span class="text-xs font-bold tabular-nums text-rose-600">{Math.round(th.rate * 100)}% fallo</span></li>
+              ))}
+            </ul>
+          ) : <p class="mt-2 text-sm text-slate-500">Aún no hay datos. Salen de los problemas de Lichess (deberes, Entrena y problema del día) del último mes.</p>}
+        </section>
+        <ReviewBuilder client:visible classId={id} canCreate={canCreate} failedItems={failedPuzzles} />
+      </div>
       <div class="ck-card overflow-x-auto !p-0">
         <table class="w-full min-w-[700px] text-sm">
           <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
             <tr>
               <th class="sticky left-0 bg-slate-50 p-3">Alumno</th>
               <th class="p-3">Nivel</th><th class="p-3">Racha</th><th class="p-3">Problemas</th><th class="p-3">Tiempo</th><th class="p-3">Última vez</th>
-              {gridAsg.map((a) => <th class="p-3 text-center" title={a.title}>{GAME_META[a.type]?.emoji}<br /><span class="inline-block max-w-24 truncate normal-case">{a.title}</span></th>)}
+              {gridAsg.map((a) => <th class="p-3 text-center" title={`${a.title} · ver detalle`}><a href={`/profe/clase/${id}/actividad/${a.activity_id}`} class="hover:text-violet-700">{GAME_META[a.type]?.emoji}<br /><span class="inline-block max-w-24 truncate normal-case underline decoration-dotted">{a.title}</span></a></th>)}
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             {students.map((s) => (
               <tr>
-                <td class="sticky left-0 bg-white p-3 font-bold"><span class="mr-1 text-xl">{s.avatar}</span>{s.name}</td>
+                <td class="sticky left-0 bg-white p-3 font-bold"><a href={`/profe/clase/${id}/alumno/${s.id}`} class="hover:underline" title="Ver ficha"><span class="mr-1 text-xl">{s.avatar}</span>{s.name}</a></td>
                 <td class="p-3">{s.level} <span class="text-xs text-slate-400">({s.xp} XP)</span></td>
                 <td class="p-3">{s.streak > 0 ? `🔥 ${s.streak}` : '—'}</td>
                 <td class="p-3">{s.puzzles}</td>
@@ -157,6 +246,8 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
             ))}
           </tbody>
         </table>
+      </div>
+      <p class="text-xs text-slate-500">Pulsa un alumno para ver su ficha, o una actividad para ver problema a problema qué ha fallado la clase.</p>
       </div>
     )}
 

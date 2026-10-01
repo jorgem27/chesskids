@@ -5,6 +5,7 @@ import { burst } from '../../lib/fx';
 import { sfx } from '../../lib/sfx';
 import { Board } from '../chess/Board';
 import type { FruitContent } from '../meta';
+import { itemTracker } from '../items';
 import type { PlayerProps } from '../types';
 import { FRUITS, PIECE_NAMES, fruitStars, pieceMoves, solve, sqToXY, type FruitLevel } from './logic';
 
@@ -46,6 +47,7 @@ export function FruitPlayer({ content, api }: PlayerProps<FruitContent>) {
   const [popping, setPopping] = useState<string | null>(null);
   const [done, setDone] = useState<null | { stars: number }>(null);
   const [glow, setGlow] = useState(0);
+  const tracker = useRef(itemTracker());
   const st = useRef({ li: 0, pos: levels[0].start, left: [...levels[0].fruits], moves: 0, score: 0, perfect: 0, bestStars: [] as number[] });
   const level: FruitLevel = levels[li];
   const optimal = useMemo(() => solve(level).moves, [li]);
@@ -59,6 +61,7 @@ export function FruitPlayer({ content, api }: PlayerProps<FruitContent>) {
     const lvl = levels[i];
     const s = st.current;
     s.li = i; s.pos = lvl.start; s.left = [...lvl.fruits.filter((f) => f !== lvl.start)]; s.moves = 0;
+    tracker.current.start();
     setLi(i); setPos(lvl.start); setLeft(s.left); setMoves(0); setDone(null);
     api.progress(i, levels.length);
     cg.current?.set({
@@ -91,6 +94,7 @@ export function FruitPlayer({ content, api }: PlayerProps<FruitContent>) {
       const opt = solve(lvl).moves;
       const stars = fruitStars(s.moves, opt);
       s.bestStars[s.li] = Math.max(s.bestStars[s.li] ?? 0, stars);
+      tracker.current.done(s.li, stars === 3, 3 - stars);
       setDone({ stars });
       setGlow((g) => g + 1);
       if (stars === 3) {
@@ -118,6 +122,7 @@ export function FruitPlayer({ content, api }: PlayerProps<FruitContent>) {
         mistakes: stars.filter((x) => x < 3).length,
         puzzlesSolved: levels.length,
         perfect: stars.filter((x) => x === 3).length,
+        items: tracker.current.list(levels.length),
       });
     } else setup(i + 1);
   }

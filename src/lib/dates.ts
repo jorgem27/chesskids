@@ -36,3 +36,20 @@ export function relativeDay(d: string | null, today: string): string {
   if (n === 1) return 'ayer';
   return `hace ${n} días`;
 }
+
+export type ScheduleMode = 'all' | 'daily' | 'every2' | 'weekly';
+const STEP: Record<ScheduleMode, number> = { all: 0, daily: 1, every2: 2, weekly: 7 };
+
+/**
+ * Start/due dates for `count` missions. 'all': every mission from `start` to `due`.
+ * Otherwise one new mission every 1/2/7 days, each open for `spanDays` days.
+ */
+export function scheduleDates(start: string, due: string | null, count: number, mode: ScheduleMode, spanDays: number): { startsOn: string; dueOn: string | null }[] {
+  const step = STEP[mode] ?? 0;
+  const span = Math.max(1, Math.min(60, Math.round(spanDays) || 7));
+  return Array.from({ length: count }, (_, i) => {
+    if (!step) return { startsOn: start, dueOn: due };
+    const s = addDays(start, i * step);
+    return { startsOn: s, dueOn: addDays(s, span - 1) };
+  });
+}

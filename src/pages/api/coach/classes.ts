@@ -19,11 +19,16 @@ export const POST: APIRoute = async ({ locals, request }) => {
   return json({ id: cl!.id, code });
 };
 
-// Rename a class (responsible coach only).
+// Rename a class or set its weekly goal (responsible coach only).
 export const PATCH: APIRoute = async ({ locals, request }) => {
-  const b = await readJson<{ classId: number; name: string }>(request);
+  const b = await readJson<{ classId: number; name?: string; weeklyGoal?: string | number }>(request);
   const perm = await classPerm(locals.db, locals.coach!.id, Number(b.classId));
   if (!perm?.is_owner) return json({ error: 'Solo el profe responsable puede cambiar la clase' }, 403);
+  if (b.weeklyGoal !== undefined) {
+    const goal = Math.max(0, Math.min(5000, Math.round(Number(b.weeklyGoal) || 0))); // 0 = automatic
+    await locals.db.prepare('UPDATE classes SET weekly_goal = ? WHERE id = ?').bind(goal, Number(b.classId)).run();
+    return json({ ok: true, weeklyGoal: goal });
+  }
   const name = String(b.name ?? '').trim().slice(0, 40);
   if (!name) return json({ error: 'Pon un nombre a la clase' }, 400);
   await locals.db.prepare('UPDATE classes SET name = ? WHERE id = ?').bind(name, Number(b.classId)).run();

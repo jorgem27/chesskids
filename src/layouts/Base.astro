@@ -4,9 +4,10 @@ interface Props { title?: string; age?: string; bodyClass?: string }
 const { title = 'ChessKids Academy', age = 'explorador', bodyClass = '' } = Astro.props;
 // Logged-in students carry their Potróculo voice here; src/lib/voice/player.ts reads it.
 const voice = Astro.locals.student?.voice;
+const studentId = Astro.locals.student?.id;
 ---
 <!doctype html>
-<html lang="es" data-voice={voice}>
+<html lang="es" data-voice={voice} data-student={studentId}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -22,5 +23,6 @@ const voice = Astro.locals.student?.voice;
   </head>
   <body data-age={age} class={bodyClass}>
     <slot />
+    {studentId && <script src="../scripts/student.ts"></script>}
   </body>
 </html>

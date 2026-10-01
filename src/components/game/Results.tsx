@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { GameResult } from '../../games/types';
-import { burst, cheer, emojiRain, sideCannons, starShower } from '../../lib/fx';
+import { burst, cheer, emojiRain, sideCannons, speak, starShower } from '../../lib/fx';
 import { useVoiceId } from '../../lib/voice/player';
+import type { CampaignReward } from '../../lib/campaigns';
 import { KINGDOMS, stickerById, type XpBreakdown } from '../../lib/rewards';
 import { sfx, vibrate } from '../../lib/sfx';
 import { Potroculo } from '../ui/Potroculo';
@@ -14,16 +15,26 @@ export interface RewardResponse {
   streak: { value: number; extended: boolean };
   newStickers: string[];
   dailyXp: number;
+  /** Set when this activity was a campaign level the student just passed. */
+  campaign?: { id: number; title: string; reward: CampaignReward; levelDone: boolean; finished: boolean } | null;
+  /** Set for practice sessions (Repaso / Problema del día / Entrena). */
+  practice?: { kind: string; solved: number; total: number; capped: boolean; rating: { before: number; after: number } | null };
 }
 
-type Overlay = { kind: 'level'; level: number } | { kind: 'kingdom'; index: number } | { kind: 'sticker'; id: string };
+type Overlay =
+  | { kind: 'level'; level: number }
+  | { kind: 'kingdom'; index: number }
+  | { kind: 'sticker'; id: string }
+  | { kind: 'campaign'; title: string; reward: CampaignReward };
 
 interface Props {
   result: GameResult; reward: RewardResponse | null; preview: boolean; error: string;
+  /** Saved on the phone because there was no connection. */
+  queued?: boolean;
   exitUrl: string; onReplay: () => void; stars: number;
 }
 
-export function Results({ result, reward, preview, error, exitUrl, onReplay, stars }: Props) {
+export function Results({ result, reward, preview, error, queued = false, exitUrl, onReplay, stars }: Props) {
   const [shownStars, setShownStars] = useState(0);
   const [xpShown, setXpShown] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
@@ -52,6 +63,7 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
     T(afterStars + 1600, () => {
       const q: Overlay[] = [];
       if (reward) {
+        if (reward.campaign?.finished) q.push({ kind: 'campaign', title: reward.campaign.title, reward: reward.campaign.reward });
         if (reward.after.level > reward.before.level) q.push({ kind: 'level', level: reward.after.level });
         if (reward.after.kingdom > reward.before.kingdom) q.push({ kind: 'kingdom', index: reward.after.kingdom });
         reward.newStickers.forEach((id) => q.push({ kind: 'sticker', id }));
@@ -65,6 +77,7 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
   const current = overlays[0];
   useEffect(() => {
     if (!current) return;
+    if (current.kind === 'campaign') { sfx.levelUp(); emojiRain(current.reward.emoji); sideCannons(); speak(`¡Mapa completado! Ganas: ${current.reward.name}`); }
     if (current.kind === 'level') { sfx.levelUp(); burst(0.5, 0.5, 1.5); cheer('levelUp', { level: current.level }, { queue: true }); }
     if (current.kind === 'kingdom') { sfx.levelUp(); emojiRain(KINGDOMS[current.index].emoji); cheer('kingdom', { kingdom: KINGDOMS[current.index].name }, { queue: true }); }
     if (current.kind === 'sticker') { sfx.pop(); setTimeout(() => sfx.star(2), 200); burst(0.5, 0.45, 0.7); const s = stickerById(current.id); if (s) cheer('sticker', { sticker: s.name }, { queue: true }); }
@@ -90,8 +103,10 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
           <div class="ck-rise mt-6 w-full max-w-md rounded-3xl bg-white/95 p-5 text-slate-800 shadow-2xl">
             {preview ? (
               <p class="text-center font-bold">Vista previa · {result.score}/{result.maxScore} puntos · {result.mistakes} fallos</p>
+            ) : queued ? (
+              <p class="text-center font-display text-xl font-extrabold text-slate-700">📶 Sin internet. ¡Guardado en tu móvil! Se enviará solo 👍</p>
             ) : error ? (
-              <p class="text-center font-bold text-rose-600">{error}</p>
+              <p class="text-center font-bold text-slate-700">{error}</p>
             ) : reward && (
               <>
                 <p class="text-center font-display text-5xl font-extrabold text-violet-600 tabular-nums">+{xpShown} XP</p>
@@ -101,6 +116,16 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
                   {reward.xp.time > 0 && <span class="rounded-full bg-sky-100 px-3 py-1 text-sky-700">⏰ Tiempo +{reward.xp.time}</span>}
                   {reward.xp.homework > 0 && <span class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">🎒 Deberes +{reward.xp.homework}</span>}
                 </div>
+                {reward.campaign?.levelDone && !reward.campaign.finished && (
+                  <p class="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-center font-bold text-emerald-700">🗺️ ¡Nivel superado! Se abre el siguiente en «{reward.campaign.title}»</p>
+                )}
+                {reward.practice?.rating && (
+                  <p class="mt-3 rounded-2xl bg-sky-50 px-3 py-2 text-center font-bold text-sky-800">
+                    📈 Tu nivel de táctica: {reward.practice.rating.before} → <span class="font-display text-lg">{reward.practice.rating.after}</span>
+                    {reward.practice.rating.after > reward.practice.rating.before ? ' ¡Subes! 🚀' : reward.practice.rating.after < reward.practice.rating.before ? ' ¡La próxima subes! 💪' : ''}
+                  </p>
+                )}
+                {reward.practice?.capped && <p class="mt-2 text-center text-xs text-slate-500">Hoy ya has ganado mucho XP entrenando. ¡Sigue practicando, mañana hay más! 😉</p>}
                 {!reward.firstTime && <p class="mt-2 text-center text-xs text-slate-500">Repetir también da XP (un poco menos) 😉</p>}
                 <div class="mt-4 grid grid-cols-2 gap-3 text-center">
                   <div class="rounded-2xl bg-orange-50 p-3">
@@ -143,6 +168,15 @@ export function Results({ result, reward, preview, error, exitUrl, onReplay, sta
                 <div class="my-4 text-[7rem] leading-none">{KINGDOMS[current.index].emoji}</div>
                 <p class="font-display text-3xl font-extrabold">{KINGDOMS[current.index].name}</p>
                 <p class="mt-1 text-slate-500">{KINGDOMS[current.index].tagline}</p>
+              </>
+            )}
+            {current.kind === 'campaign' && (
+              <>
+                <p class="text-sm font-black uppercase tracking-widest text-emerald-600">¡Campaña completada!</p>
+                <p class="mt-1 font-display text-xl font-extrabold">{current.title}</p>
+                <div class="mx-auto my-4 flex h-36 w-36 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-300 to-orange-400 text-7xl shadow-[0_8px_0_#c2410c]" style="animation: ck-wiggle .6s ease-in-out 1 .3s">{current.reward.emoji}</div>
+                <p class="font-display text-2xl font-extrabold">{current.reward.name}</p>
+                <p class="mt-1 text-slate-600">{current.reward.description}</p>
               </>
             )}
             {current.kind === 'sticker' && (() => {

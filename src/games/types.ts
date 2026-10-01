@@ -1,12 +1,20 @@
 import type { FunctionComponent } from 'preact';
 import type { AgeGroup } from '../lib/catalog';
 
+/** How one item (puzzle / question / level) went. Index = its position in the activity content. */
+export interface ItemResult {
+  ok: boolean; // solved without mistakes, hints or the answer being revealed
+  mistakes: number;
+  seconds: number;
+}
+
 export interface GameResult {
   score: number;
   maxScore: number;
   mistakes: number;
   puzzlesSolved: number;
   perfect?: number; // e.g. fruit levels solved with the optimal path
+  items?: ItemResult[]; // per-item detail for the coach (heatmap) and the review mode
 }
 
 /** What every game can call on the shell (feedback, sounds, progress, finish). */

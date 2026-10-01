@@ -1,0 +1,165 @@
+---
+import CoachLayout from '../../../../../layouts/CoachLayout.astro';
+import { GAME_META } from '../../../../../games/meta';
+import { classPerm, today, type ClassRow, type StudentRow } from '../../../../../lib/db';
+import { addDays, relativeDay, shortDate } from '../../../../../lib/dates';
+import { themeStats } from '../../../../../lib/insights';
+import { countPendingMistakes, REVIEW_DAYS } from '../../../../../lib/practice';
+import { AGE_GROUPS, type AgeGroup } from '../../../../../lib/catalog';
+import { KINGDOMS, kingdomIndex, levelFromXp, ratingBand, stickerById, weekStart } from '../../../../../lib/rewards';
+
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const classId = Number(Astro.params.id);
+const studentId = Number(Astro.params.sid);
+const perm = await classPerm(db, coach.id, classId);
+if (!perm || !(perm.is_owner || perm.can_view_progress)) return Astro.redirect('/profe');
+const [cls, s] = await Promise.all([
+  db.prepare('SELECT * FROM classes WHERE id = ?').bind(classId).first<ClassRow>(),
+  db.prepare('SELECT * FROM students WHERE id = ? AND class_id = ? AND archived = 0').bind(studentId, classId).first<StudentRow>(),
+]);
+if (!cls || !s) return Astro.redirect(`/profe/clase/${classId}?tab=progreso`);
+
+const t = today();
+const WEEKS = 8;
+const since = addDays(weekStart(new Date(t + 'T12:00:00Z')), -7 * (WEEKS - 1));
+const [daily, recent, stickers, camps, themesRes, tourneys] = await db.batch<any>([
+  db.prepare(
+    `SELECT day, SUM(xp) AS xp, SUM(secs) AS secs, SUM(solved) AS solved FROM (
+       SELECT day, xp_earned AS xp, seconds AS secs, puzzles_solved AS solved FROM attempts WHERE student_id = ? AND day >= ?
+       UNION ALL SELECT day, xp_earned, seconds, solved FROM practice_sessions WHERE student_id = ? AND day >= ? AND finished_at IS NOT NULL
+       UNION ALL SELECT day, xp_earned, 0, solved FROM projector_results WHERE student_id = ? AND day >= ?
+     ) GROUP BY day`,
+  ).bind(studentId, since, studentId, since, studentId, since),
+  db.prepare(
+    `SELECT at.activity_id, a.title, a.type, at.stars, at.mistakes, at.seconds, at.xp_earned, at.day, at.assignment_id
+     FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ? ORDER BY at.id DESC LIMIT 25`,
+  ).bind(studentId),
+  db.prepare('SELECT sticker_id, earned_at FROM student_stickers WHERE student_id = ? ORDER BY earned_at DESC').bind(studentId),
+  db.prepare(
+    `SELECT c.id, c.title, c.emoji, (SELECT COUNT(*) FROM campaign_nodes n WHERE n.campaign_id = c.id) AS total,
+       (SELECT COUNT(*) FROM campaign_progress p JOIN campaign_nodes n ON n.id = p.node_id WHERE n.campaign_id = c.id AND p.student_id = ?) AS done
+     FROM campaigns c JOIN class_campaigns cc ON cc.campaign_id = c.id AND cc.class_id = ?`,
+  ).bind(studentId, classId),
+  db.prepare(
+    `SELECT p.themes, ir.ok FROM item_results ir JOIN lichess_puzzles p ON p.id = ir.lichess_id
+     WHERE ir.student_id = ? AND ir.lichess_id IS NOT NULL ORDER BY ir.id DESC LIMIT 200`,
+  ).bind(studentId),
+  db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(solved), 0) AS solved FROM projector_results WHERE student_id = ?').bind(studentId),
+]);
+const pending = await countPendingMistakes(db, studentId, addDays(t, -REVIEW_DAYS));
+
+// Weekly buckets (Monday first), oldest to newest.
+const weeks = Array.from({ length: WEEKS }, (_, i) => ({ start: addDays(since, i * 7), xp: 0, secs: 0, solved: 0, days: 0 }));
+for (const d of daily.results as { day: string; xp: number; secs: number; solved: number }[]) {
+  const w = weeks.find((x) => d.day >= x.start && d.day < addDays(x.start, 7));
+  if (w) { w.xp += d.xp; w.secs += d.secs; w.solved += d.solved; w.days++; }
+}
+const maxXp = Math.max(30, ...weeks.map((w) => w.xp));
+const themes = themeStats((themesRes.results as { themes: string; ok: number }[]).map((r) => ({ themes: r.themes, ok: !!r.ok })), 3);
+// A theme goes to one list only: failed a third of the time or more = to reinforce.
+const weak = themes.filter((x) => x.rate >= 1 / 3).slice(0, 4);
+const strong = themes.filter((x) => x.rate < 1 / 3).sort((a, b) => a.rate - b.rate).slice(0, 3);
+const level = levelFromXp(s.xp);
+const kingdom = KINGDOMS[kingdomIndex(s.xp)];
+const streak = s.last_active_day && s.last_active_day >= addDays(t, -1) ? s.streak : 0;
+const band = s.puzzle_rating ? ratingBand(s.puzzle_rating) : null;
+const fmtTime = (x: number) => (x >= 3600 ? `${Math.floor(x / 3600)}h ${Math.floor((x % 3600) / 60)}m` : `${Math.floor(x / 60)} min`);
+const tour = tourneys.results[0] as { n: number; solved: number };
+---
+<CoachLayout title={`${s.display_name} · ${cls.name}`}>
+  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-violet-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
+
+  <section class="ck-card mt-3 flex flex-wrap items-center gap-5">
+    <span class="flex h-20 w-20 items-center justify-center rounded-full bg-violet-100 text-6xl">{s.avatar}</span>
+    <div class="min-w-48 flex-1">
+      <h1 class="font-display text-3xl font-extrabold">{s.display_name}</h1>
+      <p class="text-sm text-slate-500">{AGE_GROUPS[s.age_group as AgeGroup]?.emoji} {AGE_GROUPS[s.age_group as AgeGroup]?.label} · última vez {relativeDay(s.last_active_day, t)}</p>
+    </div>
+    <dl class="grid grid-cols-3 gap-3 text-center sm:grid-cols-6">
+      <div><dt class="text-xs text-slate-500">Nivel</dt><dd class="font-display text-2xl font-extrabold text-violet-700">{level}</dd></div>
+      <div><dt class="text-xs text-slate-500">XP</dt><dd class="font-display text-2xl font-extrabold">{s.xp}</dd></div>
+      <div><dt class="text-xs text-slate-500">Racha</dt><dd class="font-display text-2xl font-extrabold text-orange-500">🔥 {streak}</dd><dd class="text-xs text-slate-500">mejor {s.best_streak}</dd></div>
+      <div><dt class="text-xs text-slate-500">Problemas</dt><dd class="font-display text-2xl font-extrabold">{s.puzzles_solved}</dd></div>
+      <div><dt class="text-xs text-slate-500">Tiempo</dt><dd class="font-display text-xl font-extrabold">{fmtTime(s.total_seconds)}</dd></div>
+      <div><dt class="text-xs text-slate-500">Táctica</dt><dd class="font-display text-xl font-extrabold text-sky-700">{band ? `${band.emoji} ${s.puzzle_rating}` : '—'}</dd><dd class="text-xs text-slate-500">{s.puzzle_games} entrenados</dd></div>
+    </dl>
+  </section>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+      <section class="ck-card">
+        <h2 class="font-display text-xl font-extrabold">📊 Últimas {WEEKS} semanas</h2>
+        <div class="mt-4 flex h-44 items-end gap-2" role="img" aria-label="XP por semana">
+          {weeks.map((w) => (
+            <div class="flex flex-1 flex-col items-center gap-1" title={`Semana del ${shortDate(w.start)}: ${w.xp} XP, ${w.solved} problemas, ${fmtTime(w.secs)}, ${w.days} días`}>
+              <span class="text-xs font-bold text-slate-600 tabular-nums">{w.xp || ''}</span>
+              <div class={`w-full rounded-t-lg ${w.xp ? 'bg-gradient-to-t from-violet-500 to-fuchsia-400' : 'bg-slate-100'}`} style={`height:${Math.max(4, (w.xp / maxXp) * 120)}px`}></div>
+              <span class="text-xs text-slate-500">{shortDate(w.start)}</span>
+            </div>
+          ))}
+        </div>
+        <p class="mt-2 text-sm text-slate-600">XP por semana (deberes, práctica y torneos). Esta semana: <b>{weeks[WEEKS - 1].solved}</b> problemas, <b>{fmtTime(weeks[WEEKS - 1].secs)}</b>, <b>{weeks[WEEKS - 1].days}</b> {weeks[WEEKS - 1].days === 1 ? 'día' : 'días'} jugando.</p>
+      </section>
+
+      <section class="ck-card !p-0 overflow-hidden">
+        <h2 class="p-4 font-display text-xl font-extrabold">🕑 Actividad reciente</h2>
+        {!recent.results.length && <p class="px-4 pb-4 text-slate-500">Todavía no ha jugado ninguna actividad.</p>}
+        <ul class="divide-y divide-slate-100">
+          {(recent.results as any[]).map((r) => (
+            <li class="flex flex-wrap items-center gap-3 px-4 py-2 text-sm">
+              <span class="text-xl">{GAME_META[r.type]?.emoji}</span>
+              <a href={`/profe/clase/${classId}/actividad/${r.activity_id}`} class="min-w-0 flex-1 truncate font-bold hover:underline">{r.title}</a>
+              {r.assignment_id && <span class="rounded-full bg-emerald-50 px-2 text-xs text-emerald-700">🎒 deberes</span>}
+              <span>{'⭐'.repeat(r.stars) || '—'}</span>
+              <span class="w-20 text-right text-xs text-slate-500">{r.mistakes} fallos</span>
+              <span class="w-16 text-right text-xs text-slate-500">{fmtTime(r.seconds)}</span>
+              <span class="w-16 text-right text-xs text-slate-500">{relativeDay(r.day, t)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+
+    <aside class="space-y-6">
+      <section class="ck-card">
+        <h2 class="font-display text-lg font-extrabold">🔁 Fallos pendientes</h2>
+        <p class="mt-1 text-sm">{pending > 0 ? <><b class="text-rose-600">{pending}</b> problemas fallados esperan en su «Practica tus fallos».</> : 'No tiene fallos pendientes de repasar. 🎉'}</p>
+      </section>
+
+      {themes.length > 0 && (
+        <section class="ck-card">
+          <h2 class="font-display text-lg font-extrabold">🎯 Temas (Entrena y problema del día)</h2>
+          {weak.length > 0 && <>
+            <p class="mt-2 text-xs font-bold uppercase text-rose-600">A reforzar</p>
+            <ul class="mt-1 space-y-1 text-sm">{weak.map((th) => <li>{th.emoji} {th.label} <span class="text-xs text-slate-500">· falla {Math.round(th.rate * 100)}% ({th.played})</span></li>)}</ul>
+          </>}
+          {strong.length > 0 && <>
+            <p class="mt-3 text-xs font-bold uppercase text-emerald-600">Se le da bien</p>
+            <ul class="mt-1 space-y-1 text-sm">{strong.map((th) => <li>{th.emoji} {th.label} <span class="text-xs text-slate-500">· acierta {Math.round((1 - th.rate) * 100)}%</span></li>)}</ul>
+          </>}
+        </section>
+      )}
+
+      <section class="ck-card">
+        <h2 class="font-display text-lg font-extrabold">{kingdom.emoji} {kingdom.name}</h2>
+        {(camps.results as any[]).length > 0 && (
+          <ul class="mt-2 space-y-2 text-sm">
+            {(camps.results as any[]).map((c) => (
+              <li class="flex items-center gap-2"><span>{c.emoji}</span><span class="flex-1 truncate">{c.title}</span><span class="text-xs font-bold tabular-nums">{c.done}/{c.total}{c.total && c.done >= c.total ? ' 🏆' : ''}</span></li>
+            ))}
+          </ul>
+        )}
+        <p class="mt-3 text-sm text-slate-600">📽️ {tour.n} {tour.n === 1 ? 'torneo' : 'torneos'} en clase · {tour.solved} problemas resueltos en ellos</p>
+      </section>
+
+      <section class="ck-card">
+        <h2 class="font-display text-lg font-extrabold">📒 Cromos ({stickers.results.length})</h2>
+        <div class="mt-2 flex flex-wrap gap-1">
+          {(stickers.results as any[]).map((st) => { const x = stickerById(st.sticker_id); return x && <span class="text-2xl" title={`${x.name}: ${x.hint}`}>{x.emoji}</span>; })}
+          {!stickers.results.length && <p class="text-sm text-slate-500">Aún ninguno.</p>}
+        </div>
+      </section>
+    </aside>
+  </div>
+</CoachLayout>

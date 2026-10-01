@@ -13,7 +13,7 @@ interface Props {
   onUse: (puzzles: Puzzle[], replace: boolean, title: string) => void;
 }
 
-const strip = ({ lichessId: _id, rating: _r, white: _w, ...p }: Found): Puzzle => p;
+const strip = ({ white: _w, ...p }: Found): Puzzle => p; // keeps lichessId + rating for reviews
 const whiteToMove = (fen: string) => { try { return new Chess(fen).turn() === 'w'; } catch { return true; } };
 const chip = (on: boolean) =>
   `min-h-11 rounded-full px-3 py-2 font-bold ${on ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-300'}`;

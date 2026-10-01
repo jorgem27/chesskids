@@ -135,6 +135,10 @@ export interface Stats {
   fruitPerfect: number;
   blitzDone: number;
   homeworkDone: number;
+  dailyDone: number; // daily puzzles solved
+  reviewFixed: number; // failed items later solved in "Repaso"
+  campaignsDone: number;
+  rating: number; // "Entrena" tactics rating (0 = not placed)
 }
 
 export interface Sticker {
@@ -144,7 +148,11 @@ export interface Sticker {
   hint: string;
   rarity: 'común' | 'rara' | 'épica' | 'legendaria';
   test: (s: Stats) => boolean;
+  /** Not derived from Stats: granted when something happens (see eventStickers / campaign rewards). */
+  event?: true;
 }
+
+const never = () => false;
 
 export const STICKERS: Sticker[] = [
   { id: 'primer-paso', emoji: '👣', name: 'Primer paso', hint: 'Termina tu primera actividad', rarity: 'común', test: (s) => s.gamesCompleted >= 1 },
@@ -171,10 +179,95 @@ export const STICKERS: Sticker[] = [
   { id: 'reino-2', emoji: '🗺️', name: 'Explorador', hint: 'Llega al Bosque del Caballo', rarity: 'común', test: (s) => s.xp >= KINGDOMS[1].xp },
   { id: 'reino-5', emoji: '🧭', name: 'Aventurero', hint: 'Llega al Desierto del Enroque', rarity: 'rara', test: (s) => s.xp >= KINGDOMS[4].xp },
   { id: 'reino-8', emoji: '🏆', name: 'Leyenda', hint: 'Llega al Reino de las Estrellas', rarity: 'legendaria', test: (s) => s.xp >= KINGDOMS[7].xp },
+  { id: 'diario-1', emoji: '☀️', name: 'Buenos días', hint: 'Resuelve el problema del día', rarity: 'común', test: (s) => s.dailyDone >= 1 },
+  { id: 'diario-10', emoji: '📅', name: 'Puntual', hint: 'Resuelve 10 problemas del día', rarity: 'rara', test: (s) => s.dailyDone >= 10 },
+  { id: 'repaso-1', emoji: '🩹', name: 'Arreglafallos', hint: 'Arregla un fallo en el Repaso', rarity: 'común', test: (s) => s.reviewFixed >= 1 },
+  { id: 'repaso-25', emoji: '🔧', name: 'Mecánico de errores', hint: 'Arregla 25 fallos en el Repaso', rarity: 'épica', test: (s) => s.reviewFixed >= 25 },
+  { id: 'campana-1', emoji: '🚩', name: 'Conquistador', hint: 'Completa un mapa de aventura', rarity: 'rara', test: (s) => s.campaignsDone >= 1 },
+  { id: 'campana-3', emoji: '🏴‍☠️', name: 'Gran explorador', hint: 'Completa 3 mapas de aventura', rarity: 'épica', test: (s) => s.campaignsDone >= 3 },
+  { id: 'rating-1200', emoji: '📈', name: 'Táctica 1200', hint: 'Llega a 1200 puntos en Entrena', rarity: 'rara', test: (s) => s.rating >= 1200 },
+  { id: 'rating-1600', emoji: '🚀', name: 'Táctica 1600', hint: 'Llega a 1600 puntos en Entrena', rarity: 'épica', test: (s) => s.rating >= 1600 },
+  { id: 'sin-fallos', emoji: '🎯', name: 'Diana perfecta', hint: 'Resuelve 10 problemas o más en una actividad sin fallar', rarity: 'rara', test: never, event: true },
+  { id: 'madrugador', emoji: '🐓', name: 'Madrugador', hint: 'Juega antes de las 9 de la mañana', rarity: 'común', test: never, event: true },
+  { id: 'finde', emoji: '🏖️', name: 'Ajedrez en finde', hint: 'Juega un sábado o un domingo', rarity: 'común', test: never, event: true },
+  { id: 'reto-clase', emoji: '🤝', name: 'Trabajo en equipo', hint: 'Ayuda a tu clase a superar el reto de la semana', rarity: 'rara', test: never, event: true },
+  { id: 'dragon-dorado', emoji: '🐲', name: 'Dragón Dorado', hint: 'Premio especial de un mapa de aventura', rarity: 'legendaria', test: never, event: true },
 ];
 
+/** Madrid wall clock: hour (0-23) and weekday (0 = Sunday). */
+export function madridClock(date: Date): { hour: number; weekday: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: 'numeric', hour12: false, weekday: 'short' }).formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
+  const wd = parts.find((p) => p.type === 'weekday')?.value ?? 'Mon';
+  return { hour, weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(wd) };
+}
+
+/** Stickers earned by *how* a game was played (not by totals). */
+export function eventStickers(e: { hour: number; weekday: number; puzzlesSolved: number; mistakes: number }): string[] {
+  const out: string[] = [];
+  if (e.puzzlesSolved >= 10 && e.mistakes === 0) out.push('sin-fallos');
+  if (e.hour >= 5 && e.hour < 9) out.push('madrugador');
+  if (e.weekday === 0 || e.weekday === 6) out.push('finde');
+  return out;
+}
+
 export function earnedStickers(stats: Stats): string[] {
-  return STICKERS.filter((s) => s.test(stats)).map((s) => s.id);
+  return STICKERS.filter((s) => !s.event && s.test(stats)).map((s) => s.id);
+}
+
+// ---------- Practice (Repaso / Problema del día / Entrena) ----------
+
+export type PracticeKind = 'repaso' | 'diario' | 'entrena';
+
+/** Max XP per day from "Entrena", so endless training can't farm the league. */
+export const TRAINING_DAILY_XP_CAP = 60;
+
+/** XP for a practice session. `cap` = XP still allowed today for this kind (Infinity if none). */
+export function practiceXp(kind: PracticeKind, solved: number, total: number, seconds: number, cap = Infinity): XpBreakdown {
+  const starCount = starsFor(solved, total);
+  const performance = kind === 'diario' ? (solved > 0 ? 15 : 5) : (kind === 'repaso' ? 4 : 3) * solved;
+  const stars = kind === 'diario' ? 0 : starCount * 2;
+  const time = Math.min(10, Math.floor(Math.min(seconds, 1800) / 60));
+  const total_ = Math.max(0, Math.min(Math.max(2, performance + stars + time), cap));
+  return { performance, stars, time, homework: 0, total: total_, starCount };
+}
+
+// ---------- Tactics rating (Entrena) ----------
+
+export const RATING_MIN = 400;
+export const RATING_MAX = 2800;
+
+export function startRating(ageGroup: string): number {
+  return ageGroup === 'peque' ? 600 : ageGroup === 'maestro' ? 1000 : 800;
+}
+
+/** Most a session can move the rating (results are reported by the client). */
+export const RATING_SESSION_CAP = 60;
+
+/** Elo-style update after one puzzle: bigger steps while the student is still being placed. */
+export function nextRating(rating: number, games: number, puzzleRating: number, solved: boolean): number {
+  const k = games < 10 ? 60 : games < 30 ? 40 : 24;
+  const expected = 1 / (1 + 10 ** ((puzzleRating - rating) / 400));
+  const r = Math.round(rating + k * ((solved ? 1 : 0) - expected));
+  return Math.max(RATING_MIN, Math.min(RATING_MAX, r));
+}
+
+/** Friendly label for a rating (kids see an animal, not only a number). */
+export function ratingBand(r: number): { name: string; emoji: string } {
+  if (r < 700) return { name: 'Pollito', emoji: '🐣' };
+  if (r < 900) return { name: 'Aprendiz', emoji: '🐥' };
+  if (r < 1100) return { name: 'Explorador', emoji: '🦊' };
+  if (r < 1300) return { name: 'Cazador', emoji: '🦅' };
+  if (r < 1600) return { name: 'Maestro', emoji: '🦁' };
+  return { name: 'Leyenda', emoji: '🐉' };
+}
+
+// ---------- Weekly class challenge ----------
+
+/** Puzzles the whole class should solve this week: the coach's number, or 12 per student (min 20). */
+export function weeklyGoal(custom: number, students: number): number {
+  if (custom > 0) return custom;
+  return Math.max(20, students * 12);
 }
 
 export function stickerById(id: string): Sticker | undefined {

@@ -8,6 +8,7 @@ import { Board, isPromotion, syncBoard } from '../chess/Board';
 import type { LessonContent } from '../meta';
 import { applyUci } from '../puzzle/logic';
 import { ALMOST_TEXT } from '../rules';
+import { itemTracker } from '../items';
 import type { PlayerProps } from '../types';
 import { compileLesson, type Step } from './lesson';
 import type { Shape } from './parser';
@@ -19,7 +20,8 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
   const lesson = useMemo(() => compileLesson(content.pgn, content.questions), [content.pgn, content.questions]);
   const cg = useRef<Api | null>(null);
   const chess = useRef(new Chess(lesson.startFen));
-  const st = useRef({ i: 0, tries: 0, score: 0, correct: 0, mistakes: 0, waiting: null as null | (() => void), asking: false });
+  const tracker = useRef(itemTracker());
+  const st = useRef({ q: -1, i: 0, tries: 0, score: 0, correct: 0, mistakes: 0, waiting: null as null | (() => void), asking: false });
   const [waiting, setWaiting] = useState(false);
   const [shake, setShake] = useState(0);
   const [glow, setGlow] = useState(0);
@@ -62,7 +64,7 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
     s.i = i;
     if (i >= lesson.steps.length) {
       api.progress(1, 1);
-      api.finish({ score: s.score, maxScore: lesson.maxScore, mistakes: s.mistakes, puzzlesSolved: s.correct });
+      api.finish({ score: s.score, maxScore: lesson.maxScore, mistakes: s.mistakes, puzzlesSolved: s.correct, items: tracker.current.list(questions) });
       return;
     }
     api.progress(i, lesson.steps.length);
@@ -73,6 +75,8 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
     }
     // Question
     s.tries = 0;
+    s.q++;
+    tracker.current.start();
     s.asking = true;
     cg.current!.setAutoShapes(toCg(step.questionShapes));
     api.say(`❓ ${step.question}`, { speak: true });
@@ -84,6 +88,7 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
     const s = st.current;
     s.asking = false;
     s.score += earned;
+    tracker.current.done(s.q, earned > 0 && s.tries === 0, s.tries);
     setAnswered((a) => a + 1);
     const finishStep = () => showText(step.afterText, step.afterShapes, step.afterWait, () => run(s.i + 1));
     if (playedUci.slice(0, 4) === step.main.uci.slice(0, 4)) {

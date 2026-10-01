@@ -1,11 +1,13 @@
 ﻿---
 import StudentLayout from '../../layouts/StudentLayout.astro';
 import { PetCustomizer } from '../../components/student/PetCustomizer';
+import { studentUnlocks, unlockedPetItems } from '../../lib/campaigns';
 
 const s = Astro.locals.student;
 if (!s) return Astro.redirect('/entrar');
 
 const db = Astro.locals.db;
+const extraItems = unlockedPetItems(await studentUnlocks(db, s.id));
 const petRow = await db.prepare('SELECT * FROM student_pets WHERE student_id = ?').bind(s.id).first<{ base_pet: string; equipped_json: string }>();
 
 const initialBase = (petRow?.base_pet || 'peon') as any;
@@ -21,7 +23,8 @@ const initialEquipped = petRow?.equipped_json ? JSON.parse(petRow.equipped_json)
   
   <PetCustomizer 
     client:load 
-    studentXp={s.xp} 
+    studentXp={s.xp}
+    extraItems={extraItems}
     initialBase={initialBase}
     initialEquipped={initialEquipped}
   />

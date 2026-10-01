@@ -1,4 +1,4 @@
-import { dayKey, weekStart, type Stats } from './rewards';
+import { dayKey, weekStart, weeklyGoal, type Stats } from './rewards';
 
 export interface CoachRow { id: number; email: string; name: string }
 
@@ -7,9 +7,11 @@ export interface StudentRow {
   username: string; login_token: string; xp: number; streak: number; best_streak: number;
   last_active_day: string | null; total_seconds: number; puzzles_solved: number; games_completed: number;
   voice: string; // Potróculo voice id, 'random' or 'none'
+  puzzle_rating: number; // "Entrena" rating, 0 = not placed yet
+  puzzle_games: number;
 }
 
-export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string }
+export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string; weekly_goal: number }
 
 export interface ActivityRow {
   id: number; club_id: number; type: string; title: string; description: string;
@@ -101,18 +103,24 @@ function statsQuery(db: D1Database, studentId: number) {
        SUM(CASE WHEN a.type = 'pgn-lesson' THEN 1 ELSE 0 END) AS lessons,
        SUM(CASE WHEN a.type = 'fruit-collector' THEN at.perfect ELSE 0 END) AS fruit,
        SUM(CASE WHEN a.type = 'puzzle-blitz' THEN 1 ELSE 0 END) AS blitz,
-       COUNT(DISTINCT at.assignment_id) AS homework
+       COUNT(DISTINCT at.assignment_id) AS homework,
+       (SELECT COUNT(*) FROM practice_sessions ps WHERE ps.student_id = ? AND ps.kind = 'diario' AND ps.solved > 0) AS daily,
+       (SELECT COUNT(*) FROM item_results ir WHERE ir.student_id = ? AND ir.source = 'repaso' AND ir.ok = 1) AS fixed,
+       (SELECT COUNT(*) FROM campaign_completions cc WHERE cc.student_id = ?) AS campaigns
      FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ?`,
-  ).bind(studentId);
+  ).bind(studentId, studentId, studentId, studentId);
 }
 
-export type StatsAgg = { three: number; lessons: number; fruit: number; blitz: number; homework: number } | null | undefined;
+export type StatsAgg = {
+  three: number; lessons: number; fruit: number; blitz: number; homework: number; daily: number; fixed: number; campaigns: number;
+} | null | undefined;
 
 export function toStats(s: StudentRow, r: StatsAgg): Stats {
   return {
     xp: s.xp, streak: s.streak, puzzlesSolved: s.puzzles_solved, gamesCompleted: s.games_completed,
     totalSeconds: s.total_seconds, threeStars: r?.three ?? 0, lessonsDone: r?.lessons ?? 0,
     fruitPerfect: r?.fruit ?? 0, blitzDone: r?.blitz ?? 0, homeworkDone: r?.homework ?? 0,
+    dailyDone: r?.daily ?? 0, reviewFixed: r?.fixed ?? 0, campaignsDone: r?.campaigns ?? 0, rating: s.puzzle_rating ?? 0,
   };
 }
 
@@ -148,14 +156,19 @@ export async function studentMissions(db: D1Database, studentId: number, classId
   return results;
 }
 
+/** This week's XP and puzzles solved per student of a class (league + cooperative challenge). */
 export async function weeklyLeaderboard(db: D1Database, classId: number) {
   const ws = weekStart(new Date());
   const { results } = await db.prepare(
     `SELECT s.id, s.display_name, s.avatar,
        COALESCE((SELECT SUM(at.xp_earned) FROM attempts at WHERE at.student_id = s.id AND at.day >= ?), 0)
-       + COALESCE((SELECT SUM(pr.xp_earned) FROM projector_results pr WHERE pr.student_id = s.id AND pr.day >= ?), 0) AS week_xp
+       + COALESCE((SELECT SUM(pr.xp_earned) FROM projector_results pr WHERE pr.student_id = s.id AND pr.day >= ?), 0)
+       + COALESCE((SELECT SUM(ps.xp_earned) FROM practice_sessions ps WHERE ps.student_id = s.id AND ps.day >= ?), 0) AS week_xp,
+       COALESCE((SELECT SUM(at.puzzles_solved) FROM attempts at WHERE at.student_id = s.id AND at.day >= ?), 0)
+       + COALESCE((SELECT SUM(pr.solved) FROM projector_results pr WHERE pr.student_id = s.id AND pr.day >= ?), 0)
+       + COALESCE((SELECT SUM(ps.solved) FROM practice_sessions ps WHERE ps.student_id = s.id AND ps.day >= ?), 0) AS week_solved
      FROM students s WHERE s.class_id = ? AND s.archived = 0 ORDER BY week_xp DESC, s.display_name`,
-  ).bind(ws, ws, classId).all<{ id: number; display_name: string; avatar: string; week_xp: number }>();
+  ).bind(ws, ws, ws, ws, ws, ws, classId).all<{ id: number; display_name: string; avatar: string; week_xp: number; week_solved: number }>();
   return results;
 }
 
@@ -163,9 +176,29 @@ export async function xpToday(db: D1Database, studentId: number): Promise<number
   const d = today();
   const r = await db.prepare(
     `SELECT COALESCE((SELECT SUM(xp_earned) FROM attempts WHERE student_id = ? AND day = ?), 0)
-       + COALESCE((SELECT SUM(xp_earned) FROM projector_results WHERE student_id = ? AND day = ?), 0) AS x`,
-  ).bind(studentId, d, studentId, d).first<{ x: number }>();
+       + COALESCE((SELECT SUM(xp_earned) FROM projector_results WHERE student_id = ? AND day = ?), 0)
+       + COALESCE((SELECT SUM(xp_earned) FROM practice_sessions WHERE student_id = ? AND day = ?), 0) AS x`,
+  ).bind(studentId, d, studentId, d, studentId, d).first<{ x: number }>();
   return r?.x ?? 0;
+}
+
+/**
+ * Grants the "reto-clase" sticker to everyone in the class who solved something this week, once
+ * the class reaches its weekly goal. Returns true if `studentId` just got it.
+ */
+export async function checkWeeklyGoal(db: D1Database, classId: number, studentId: number): Promise<boolean> {
+  // Cheap exit: once a student has the sticker there is nothing new to tell them.
+  if (await db.prepare("SELECT 1 FROM student_stickers WHERE student_id = ? AND sticker_id = 'reto-clase'").bind(studentId).first()) return false;
+  const [cls, board] = await Promise.all([
+    db.prepare('SELECT weekly_goal FROM classes WHERE id = ?').bind(classId).first<{ weekly_goal: number }>(),
+    weeklyLeaderboard(db, classId),
+  ]);
+  const solved = board.reduce((t, r) => t + r.week_solved, 0);
+  if (solved < weeklyGoal(cls?.weekly_goal ?? 0, board.length)) return false;
+  const helpers = board.filter((r) => r.week_solved > 0).map((r) => r.id);
+  if (!helpers.includes(studentId)) return false;
+  await db.batch(helpers.map((id) => db.prepare("INSERT OR IGNORE INTO student_stickers (student_id, sticker_id) VALUES (?, 'reto-clase')").bind(id)));
+  return true;
 }
 
 export async function readJson<T = any>(request: Request): Promise<T> {

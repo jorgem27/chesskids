@@ -6,6 +6,7 @@ import { sfx, vibrate } from '../../lib/sfx';
 import { Board, isPromotion, syncBoard } from '../chess/Board';
 import type { PlayerProps } from '../types';
 import { ALMOST_TEXT } from '../rules';
+import { itemTracker } from '../items';
 import { applyUci, earnedPts, judgeMove, puzzleMaxScore, stepPts, type PuzzleSetContent } from './logic';
 
 type Mode = 'hint' | 'blitz';
@@ -21,6 +22,7 @@ export function makePuzzlePlayer(mode: Mode) {
     const [glow, setGlow] = useState(0);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const timer = useRef<number | null>(null);
+    const tracker = useRef(itemTracker());
     const limit = mode === 'blitz' ? content.timeLimitSec ?? 0 : 0;
 
     function prompt(i: number) {
@@ -35,6 +37,7 @@ export function makePuzzlePlayer(mode: Mode) {
       chess.current = new Chess(puzzles[i].fen);
       s.color = chess.current.turn() === 'w' ? 'white' : 'black';
       setIdx(i);
+      tracker.current.start();
       api.progress(i, puzzles.length);
       if (cg.current) {
         cg.current.set({ orientation: s.color });
@@ -53,7 +56,8 @@ export function makePuzzlePlayer(mode: Mode) {
         left -= 1;
         setTimeLeft(left);
         if (left <= 5 && left > 0) sfx.tick();
-        if (left <= 0) { stopClock(); fail('¡Se acabó el tiempo!'); }
+        // Time is up: fail as soon as the board is playable again (not during the opponent's reply).
+        if (left <= 0 && !st.current.locked) { stopClock(); fail('¡Se acabó el tiempo!'); }
       }, 1000);
     }
     function stopClock() {
@@ -71,6 +75,7 @@ export function makePuzzlePlayer(mode: Mode) {
           maxScore: puzzles.reduce((t, p) => t + puzzleMaxScore(p, mode), 0),
           mistakes: s.totalMistakes,
           puzzlesSolved: s.solved,
+          items: tracker.current.list(puzzles.length),
         });
       } else load(s.idx + 1);
     }
@@ -81,6 +86,7 @@ export function makePuzzlePlayer(mode: Mode) {
       s.locked = true;
       s.solved++;
       s.combo++;
+      tracker.current.done(s.idx, s.mistakes === 0, s.mistakes);
       if (mode === 'blitz' && s.combo >= 2) api.combo(s.combo);
       setGlow((g) => g + 1);
       api.good(undefined, { big: s.mistakes === 0 });
@@ -96,6 +102,7 @@ export function makePuzzlePlayer(mode: Mode) {
       s.combo = 0;
       api.combo(0);
       s.totalMistakes++;
+      tracker.current.done(s.idx, false, s.mistakes + 1);
       const expected = puzzles[s.idx].moves[s.ply];
       api.bad(msg ?? 'La buena era esta 👀');
       setShake((x) => x + 1);

@@ -8,6 +8,7 @@ import { starsFor } from '../../lib/rewards';
 import { isMuted, setMuted, sfx, vibrate } from '../../lib/sfx';
 import { Potroculo, type Mood } from '../ui/Potroculo';
 import { Results, type RewardResponse } from './Results';
+import { isNetworkError, queueResult } from '../../lib/outbox';
 
 export interface PlayerActivity { id: number; type: string; title: string; content: any }
 
@@ -18,11 +19,17 @@ interface Props {
   ageGroup: AgeGroup;
   preview?: boolean; // coach preview: nothing is saved
   exitUrl: string;
+  /** Board background unlocked with a campaign reward. */
+  board?: 'space';
+  /** Practice session served by /app/practica/*: results go to /api/practice. */
+  practice?: { sessionId: number } | null;
 }
+
+const newNonce = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '');
 
 type Feedback = { kind: 'good' | 'bad'; text: string; key: number } | null;
 
-export default function GamePlayer({ activity, assignmentId = null, campaignNodeId = null, ageGroup, preview = false, exitUrl }: Props) {
+export default function GamePlayer({ activity, assignmentId = null, campaignNodeId = null, ageGroup, preview = false, exitUrl, board, practice = null }: Props) {
   const game = useMemo(() => getGame(activity.type), [activity.type]);
   const [phase, setPhase] = useState<'intro' | 'play' | 'saving' | 'done'>('intro');
   const [progress, setProgress] = useState(0);
@@ -34,6 +41,8 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
   const [result, setResult] = useState<GameResult | null>(null);
   const [reward, setReward] = useState<RewardResponse | null>(null);
   const [error, setError] = useState('');
+  const [queued, setQueued] = useState(false);
+  const nonce = useRef(newNonce());
   const [runKey, setRunKey] = useState(0);
   const seconds = useRef(0);
   const fbTimer = useRef<number | null>(null);
@@ -108,16 +117,22 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
       setPhase('done');
       return;
     }
+    const url = practice ? '/api/practice' : '/api/attempts';
+    const body = practice
+      ? { sessionId: practice.sessionId, seconds: seconds.current, items: r.items ?? [] }
+      : { activityId: activity.id, assignmentId, campaignNodeId, seconds: seconds.current, nonce: nonce.current, ...r };
     try {
-      const res = await fetch('/api/attempts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ activityId: activity.id, assignmentId, campaignNodeId, seconds: seconds.current, ...r }),
-      });
-      if (!res.ok) throw new Error((await (res.json() as Promise<any>).catch(() => ({}))).error ?? 'Error');
-      setReward(await (res.json() as Promise<any>));
+      const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await (res.json() as Promise<any>).catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? 'Error');
+      if (data.duplicate) setError('Este resultado ya estaba guardado 👍');
+      else setReward(data);
     } catch (e) {
-      setError('No se pudo guardar el resultado. ¿Tienes internet?');
+      if (isNetworkError(e)) {
+        // No connection: keep it on the phone and send it later (see src/lib/outbox.ts).
+        queueResult(url, body);
+        setQueued(true);
+      } else setError((e as Error).message || 'No se pudo guardar el resultado.');
     }
     setPhase('done');
   }
@@ -132,6 +147,9 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
   }
 
   function replay() {
+    if (practice) { location.reload(); return; } // a new practice session is served by the page
+    nonce.current = newNonce();
+    setQueued(false);
     setResult(null); setReward(null); setError(''); setCombo(0); setProgress(0); setBubble('');
     setRunKey((k) => k + 1);
     seconds.current = 0;
@@ -170,6 +188,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
         reward={reward}
         preview={preview}
         error={error}
+        queued={queued}
         exitUrl={exitUrl}
         onReplay={replay}
         stars={starsFor(result.score, result.maxScore)}
@@ -180,7 +199,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
   // ---------- Playing ----------
   const Player = game.Player;
   return (
-    <div class="flex min-h-dvh flex-col bg-gradient-to-b from-violet-50 to-fuchsia-50">
+    <div class={`flex min-h-dvh flex-col ${board === 'space' ? 'ck-space-bg' : 'bg-gradient-to-b from-violet-50 to-fuchsia-50'}`}>
       {/* Top bar */}
       <header class="sticky top-0 z-20 flex items-center gap-3 px-3 py-3 md:px-6">
         <a href={exitUrl} onClick={(e) => { if (!preview && !confirm('¿Salir? Perderás el progreso de esta actividad.')) e.preventDefault(); }}

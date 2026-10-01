@@ -8,7 +8,7 @@ export interface StudentInfo {
   xp: number; level: number; streak: number; last: string;
 }
 interface Created { id: number; name: string; avatar: string; username: string; password: string; pin: string; token: string }
-interface Props { classId: number; classCode: string; className: string; origin: string; canManage: boolean; students: StudentInfo[] }
+interface Props { classId: number; classCode: string; className: string; origin: string; canManage: boolean; canView?: boolean; students: StudentInfo[] }
 
 async function api(url: string, method: string, body?: unknown) {
   const res = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -17,7 +17,7 @@ async function api(url: string, method: string, body?: unknown) {
   return data;
 }
 
-export default function StudentManager({ classId, classCode, className, origin, canManage, students: initial }: Props) {
+export default function StudentManager({ classId, classCode, className, origin, canManage, canView = false, students: initial }: Props) {
   const [students, setStudents] = useState(initial);
   const [names, setNames] = useState('');
   const [age, setAge] = useState<AgeGroup>('explorador');
@@ -113,12 +113,15 @@ export default function StudentManager({ classId, classCode, className, origin, 
                 <p class="font-bold">{s.name} <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{AGE_GROUPS[s.age_group]?.emoji} {AGE_GROUPS[s.age_group]?.label}</span></p>
                 <p class="text-xs text-slate-500">@{s.username} · Nivel {s.level} · {s.xp} XP · 🔥 {s.streak} · última vez {s.last}</p>
               </div>
-              {canManage && (
-                <div class="flex gap-2">
-                  <a class="ck-btn-sm !bg-emerald-50 !text-emerald-700" target="_blank" href={whatsappUrl(familyMsg(s))} title="Enviar acceso a la familia">💬</a>
-                  <button class="ck-btn-sm" onClick={() => { setSecret(null); setDelPass(''); setDelErr(''); setNewName(s.name); setOpen(s); }}>🔑 Acceso</button>
-                </div>
-              )}
+              <div class="flex gap-2">
+                {canView && <a class="ck-btn-sm" href={`/profe/clase/${classId}/alumno/${s.id}`} title="Ver su progreso">📊 Ficha</a>}
+                {canManage && (
+                  <>
+                    <a class="ck-btn-sm !bg-emerald-50 !text-emerald-700" target="_blank" href={whatsappUrl(familyMsg(s))} title="Enviar acceso a la familia">💬</a>
+                    <button class="ck-btn-sm" onClick={() => { setSecret(null); setDelPass(''); setDelErr(''); setNewName(s.name); setOpen(s); }}>🔑 Acceso</button>
+                  </>
+                )}
+              </div>
             </li>
           ))}
           {!students.length && <li class="p-6 text-center text-slate-500">Todavía no hay alumnos.</li>}

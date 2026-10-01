@@ -80,7 +80,7 @@ test('streaks', () => {
 });
 
 test('stickers & kingdoms', () => {
-  const base = { xp: 0, streak: 0, puzzlesSolved: 0, gamesCompleted: 0, totalSeconds: 0, threeStars: 0, lessonsDone: 0, fruitPerfect: 0, blitzDone: 0, homeworkDone: 0 };
+  const base = { xp: 0, streak: 0, puzzlesSolved: 0, gamesCompleted: 0, totalSeconds: 0, threeStars: 0, lessonsDone: 0, fruitPerfect: 0, blitzDone: 0, homeworkDone: 0, dailyDone: 0, reviewFixed: 0, campaignsDone: 0, rating: 0 };
   assert.deepEqual(earnedStickers(base), []);
   assert.ok(earnedStickers({ ...base, gamesCompleted: 1, puzzlesSolved: 12 }).includes('resuelve-10'));
   assert.equal(kingdomIndex(0), 0);

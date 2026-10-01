@@ -6,6 +6,7 @@ import { burst } from '../../lib/fx';
 import { sfx, vibrate } from '../../lib/sfx';
 import { Board, isPromotion, syncBoard } from '../chess/Board';
 import { applyUci } from '../puzzle/logic';
+import { itemTracker } from '../items';
 import type { PlayerProps } from '../types';
 import type { BotContent } from '../meta';
 import { BotEngine } from './engine';
@@ -19,6 +20,7 @@ export function BotPlayer({ content, api }: PlayerProps<BotContent>) {
   const cg = useRef<Api | null>(null);
   const engine = useRef<BotEngine | null>(null);
   const chess = useRef(new Chess(positions[0].fen));
+  const tracker = useRef(itemTracker());
   const st = useRef({ idx: 0, moves: 0, hints: 0, fails: 0, busy: false, over: false, alive: true, bestStars: [] as number[], totalFails: 0, solved: 0 });
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<'explain' | 'play'>(hasExplanation(positions[0]) ? 'explain' : 'play');
@@ -43,6 +45,7 @@ export function BotPlayer({ content, api }: PlayerProps<BotContent>) {
     const p = positions[i];
     s.idx = i; s.moves = 0; s.hints = 0; s.busy = false; s.over = false;
     chess.current = new Chess(p.fen);
+    tracker.current.start();
     setIdx(i); setMoves(0); setEnd(null); setThinking(false);
     api.progress(i, positions.length);
     if (showNotebook && hasExplanation(p)) setPhase('explain');
@@ -63,6 +66,7 @@ export function BotPlayer({ content, api }: PlayerProps<BotContent>) {
     if (kind === 'win') {
       const stars = Math.max(1, starsForMoves(s.moves, pos.parMoves) - (s.hints > 0 ? 1 : 0));
       s.bestStars[s.idx] = Math.max(s.bestStars[s.idx] ?? 0, stars);
+      tracker.current.done(s.idx, stars === 3, 3 - stars);
       s.solved++;
       setGlow((g) => g + 1);
       setEnd({ kind, stars, text });
@@ -71,6 +75,7 @@ export function BotPlayer({ content, api }: PlayerProps<BotContent>) {
     } else {
       s.totalFails++;
       s.fails++;
+      tracker.current.done(s.idx, false, 1);
       setShake((x) => x + 1);
       vibrate(120);
       setEnd({ kind, stars: 0, text });
@@ -89,6 +94,7 @@ export function BotPlayer({ content, api }: PlayerProps<BotContent>) {
         mistakes: s.totalFails,
         puzzlesSolved: stars.filter((x) => x > 0).length,
         perfect: stars.filter((x) => x === 3).length,
+        items: tracker.current.list(positions.length),
       });
     } else { s.fails = 0; load(s.idx + 1, true); }
   }

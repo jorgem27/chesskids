@@ -24,7 +24,7 @@ Gamified chess-learning platform for kids (5–15), modeled after Duolingo: cont
 ## Layout
 
 - `src/games/` – one folder per game type (`puzzle`, `pgn`, `fruit`, `bot`, `pdf`), plus `meta.ts` (metadata/validation), `registry.ts` (UI registration), `rules.ts`, `types.ts` (the `GameApi` contract).
-- `src/lib/` – server/shared logic: `auth.ts`, `rewards.ts` (XP, levels, streaks, stickers), `activities.ts`, `db.ts`, `catalog.ts`.
+- `src/lib/` – server/shared logic: `auth.ts`, `rewards.ts` (XP, levels, streaks, stickers, practice XP, tactics rating), `activities.ts`, `db.ts`, `catalog.ts`, `campaigns.ts` (adventure maps + rewards), `practice.ts` (Repaso / Problema del día / Entrena), `insights.ts` (per-item coach reports), `progress.ts` (shared sticker/reward tail), `outbox.ts` (offline result queue).
 - `src/pages/` – `profe/` (coach panel), `app/` (student dashboard), `entrar` + `u/` + `c/` (student login/links), `api/` (endpoints). `src/middleware.ts` holds the route guards.
 - `src/components/` – `coach/`, `student/`, `game/`, `projector/`, `ui/`.
 - `tests/` – chess and game-logic tests. Add a test for every new solver, validator or reward rule.
@@ -48,6 +48,8 @@ Coaches must be able to create content extremely easily, and developers must be 
 3. **Interactive PGN lessons** – the game auto-plays and pauses at critical moments. Text prompts live in PGN comments (`[%ask]`). The main line drives the game but alternative correct moves must be accepted, and coaches assign variable points per move (`[%pts N]`: full for the best move, half for a decent alternative).
 4. **Fruit Collector** – move one piece (legal chess movement) to collect all the fruit on the board. The goal is the mathematically shortest path (exact solver in `src/games/fruit`).
 5. **Play vs bot** and **PDF viewer** also exist beyond the original four.
+
+Games report per-item results (`GameResult.items`, index = position in the content) through `itemTracker` (`src/games/items.ts`). They feed `item_results`, the coach heatmap (`/profe/clase/[id]/actividad/[aid]`), automatic reviews (`/api/coach/review`) and the student's "Practica tus fallos". Practice outside homework goes through server-served `practice_sessions` (`/app/practica/*` → `/api/practice`).
 
 To add a new game type, use the `add-game-mode` skill (metadata in `meta.ts` → Player/Editor components → register in `registry.ts`).
 

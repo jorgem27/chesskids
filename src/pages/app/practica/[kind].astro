@@ -1,0 +1,138 @@
+---
+import Base from '../../../layouts/Base.astro';
+import StudentLayout from '../../../layouts/StudentLayout.astro';
+import GamePlayer from '../../../components/game/GamePlayer';
+import type { AgeGroup } from '../../../lib/catalog';
+import { today } from '../../../lib/db';
+import { addDays } from '../../../lib/dates';
+import { LICHESS_THEMES } from '../../../lib/lichessThemes';
+import {
+  createSession, dailyPuzzle, pendingMistakes, PRACTICE_MODE, PRACTICE_TITLE, REVIEW_DAYS, trainingPuzzles, type ServedPuzzle,
+} from '../../../lib/practice';
+import { ratingBand, startRating, type PracticeKind } from '../../../lib/rewards';
+
+const s = Astro.locals.student!;
+const db = Astro.locals.db;
+const kind = Astro.params.kind as PracticeKind;
+if (!['repaso', 'diario', 'entrena'].includes(kind)) return Astro.redirect('/app');
+const t = today();
+
+// Themes offered in "Entrena" (kid-friendly subset of the Lichess themes).
+const TRAINING_THEMES = ['mix', 'mateIn1', 'mateIn2', 'hangingPiece', 'fork', 'pin', 'skewer', 'backRankMate', 'discoveredAttack', 'promotion', 'endgame'];
+const themes = LICHESS_THEMES.filter((th) => TRAINING_THEMES.includes(th.key));
+const rating = s.puzzle_rating || startRating(s.age_group);
+const band = ratingBand(rating);
+
+let served: ServedPuzzle[] = [];
+let sessionId = 0;
+let view: 'play' | 'empty' | 'daily-done' | 'choose' = 'play';
+let dailyStats = { classmates: 0, solved: false };
+
+if (kind === 'repaso') {
+  served = await pendingMistakes(db, s.id, addDays(t, -REVIEW_DAYS));
+  if (!served.length) view = 'empty';
+} else if (kind === 'diario') {
+  const [done, open, mates] = await db.batch<any>([
+    db.prepare("SELECT solved FROM practice_sessions WHERE student_id = ? AND kind = 'diario' AND day = ? AND finished_at IS NOT NULL LIMIT 1").bind(s.id, t),
+    db.prepare("SELECT id, puzzles_json FROM practice_sessions WHERE student_id = ? AND kind = 'diario' AND day = ? AND finished_at IS NULL ORDER BY id DESC LIMIT 1").bind(s.id, t),
+    db.prepare(
+      `SELECT COUNT(DISTINCT ps.student_id) AS n FROM practice_sessions ps JOIN students st ON st.id = ps.student_id
+       WHERE st.class_id = ? AND ps.kind = 'diario' AND ps.day = ? AND ps.solved > 0`,
+    ).bind(s.class_id, t),
+  ]);
+  dailyStats.classmates = mates.results[0]?.n ?? 0;
+  if (done.results.length) {
+    view = 'daily-done';
+    dailyStats.solved = done.results[0].solved > 0;
+  } else if (open.results.length) {
+    sessionId = open.results[0].id;
+    served = JSON.parse(open.results[0].puzzles_json);
+  } else {
+    const p = await dailyPuzzle(db, t, s.age_group);
+    if (p) served = [p];
+    else view = 'empty';
+  }
+} else {
+  const theme = Astro.url.searchParams.get('tema');
+  if (!theme || !TRAINING_THEMES.includes(theme)) view = 'choose';
+  else {
+    served = await trainingPuzzles(db, s.id, rating, theme);
+    if (!served.length) view = 'empty';
+  }
+}
+
+if (view === 'play' && !sessionId) {
+  // Refreshing the page must not pile up sessions: drop this kid's stale unfinished ones, and
+  // reuse a recent open "repaso" (its puzzles don't change until it is played).
+  await db.prepare('DELETE FROM practice_sessions WHERE student_id = ? AND finished_at IS NULL AND created_at < unixepoch() - 86400').bind(s.id).run();
+  const open = kind === 'repaso'
+    ? await db.prepare("SELECT id, puzzles_json FROM practice_sessions WHERE student_id = ? AND kind = 'repaso' AND finished_at IS NULL AND created_at > unixepoch() - 7200 ORDER BY id DESC LIMIT 1")
+        .bind(s.id).first<{ id: number; puzzles_json: string }>()
+    : null;
+  if (open) { sessionId = open.id; served = JSON.parse(open.puzzles_json); }
+  else sessionId = await createSession(db, s.id, kind, t, served);
+}
+const activity = { id: 0, type: PRACTICE_MODE[kind], title: PRACTICE_TITLE[kind], content: { puzzles: served.map((p) => p.puzzle) } };
+const exitUrl = kind === 'entrena' ? '/app/practica/entrena' : '/app';
+---
+{view === 'play' ? (
+  <Base title={`${PRACTICE_TITLE[kind]} · ChessKids`} age={s.age_group}>
+    <GamePlayer client:only="preact" activity={activity} practice={{ sessionId }} ageGroup={s.age_group as AgeGroup} exitUrl={exitUrl} />
+  </Base>
+) : (
+  <StudentLayout title={`${PRACTICE_TITLE[kind]} · ChessKids`}>
+    <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-violet-700 hover:underline">← Volver al inicio</a>
+
+    {view === 'empty' && kind === 'repaso' && (
+      <div class="ck-card ck-rise mt-4 text-center">
+        <p class="text-7xl">🎉</p>
+        <h1 class="mt-3 font-display text-3xl font-extrabold text-emerald-600">¡No tienes fallos pendientes!</h1>
+        <p class="mt-2 font-bold text-slate-600">Cuando falles un problema, aparecerá aquí para que lo vuelvas a intentar.</p>
+        <a href="/app/practica/entrena" class="ck-btn ck-btn-primary mt-6">🏋️ Ir a Entrena</a>
+      </div>
+    )}
+
+    {view === 'empty' && kind !== 'repaso' && (
+      <div class="ck-card ck-rise mt-4 text-center">
+        <p class="text-6xl">🧩</p>
+        <p class="mt-3 font-bold text-slate-600">Ahora mismo no hay problemas preparados. ¡Prueba otro tema o vuelve en un rato!</p>
+        <a href="/app/practica/entrena" class="ck-btn ck-btn-primary mt-6">Elegir otro tema</a>
+      </div>
+    )}
+
+    {view === 'daily-done' && (
+      <div class="ck-card ck-rise mt-4 text-center">
+        <p class="text-7xl">{dailyStats.solved ? '🌞' : '🌤️'}</p>
+        <h1 class="mt-3 font-display text-3xl font-extrabold text-amber-600">{dailyStats.solved ? '¡Problema del día resuelto!' : '¡Ya lo has intentado hoy!'}</h1>
+        <p class="mt-2 font-bold text-slate-600">Mañana habrá uno nuevo. {dailyStats.classmates > 0 && `${dailyStats.classmates} ${dailyStats.classmates === 1 ? 'compañero lo ha' : 'compañeros lo han'} resuelto hoy.`}</p>
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+          <a href="/app/practica/entrena" class="ck-btn ck-btn-primary">🏋️ Seguir entrenando</a>
+          <a href="/app" class="ck-btn bg-white text-violet-700 ring-1 ring-slate-200">🏠 Inicio</a>
+        </div>
+      </div>
+    )}
+
+    {view === 'choose' && (
+      <section class="mt-2">
+        <div class="ck-card ck-rise flex items-center gap-4 bg-gradient-to-r from-sky-600 to-indigo-600 text-white">
+          <span class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/25 text-6xl">{band.emoji}</span>
+          <div>
+            <p class="text-sm font-bold opacity-90">Tu nivel de táctica</p>
+            <p class="font-display text-4xl font-extrabold">{rating} <span class="text-2xl">· {band.name}</span></p>
+            <p class="text-sm font-bold opacity-90">{s.puzzle_games ? `${s.puzzle_games} problemas entrenados` : '¡Resuelve problemas para descubrir tu nivel!'}</p>
+          </div>
+        </div>
+        <h1 class="mt-6 font-display text-2xl font-extrabold text-slate-800">🏋️ ¿Qué quieres entrenar?</h1>
+        <p class="font-bold text-slate-600">5 problemas a tu medida 💪</p>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {themes.map((th, i) => (
+            <a href={`/app/practica/entrena?tema=${th.key}`} class="ck-rise flex min-h-24 flex-col items-center justify-center rounded-3xl bg-white p-3 text-center shadow-[0_5px_0_rgb(0_0_0/0.08)] ring-2 ring-slate-100 transition hover:-translate-y-1 hover:ring-violet-300 active:translate-y-1" style={`animation-delay:${i * 0.03}s`}>
+              <span class="text-4xl">{th.emoji}</span>
+              <span class="mt-1 font-display font-extrabold text-slate-700">{th.label}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+  </StudentLayout>
+)}

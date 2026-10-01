@@ -66,8 +66,22 @@ export const PET_ITEMS: PetItem[] = [
   { id: 'frase_rey', slot: 'phrase', name: 'Protege al rey', unlockXp: 1600, emoji: '💬 ¡Protege al rey!' },
 ];
 
-export function getUnlockedItems(xp: number): PetItem[] {
-  return PET_ITEMS.filter((i) => xp >= i.unlockXp);
+/** Items unlocked by XP, plus `extra` item ids unlocked by other means (campaign rewards). */
+export function getUnlockedItems(xp: number, extra: string[] = []): PetItem[] {
+  return PET_ITEMS.filter((i) => xp >= i.unlockXp || extra.includes(i.id));
+}
+
+/** Keeps only a valid base and unlocked items in their own slot (student input is untrusted). */
+export function sanitizePet(base: unknown, equipped: unknown, unlocked: PetItem[]): { base: PetBase; equipped: EquippedItems } | null {
+  if (!PET_BASES.some((b) => b.id === base)) return null;
+  const out: EquippedItems = {};
+  if (equipped && typeof equipped === 'object') {
+    for (const [slot, id] of Object.entries(equipped as Record<string, unknown>)) {
+      const item = unlocked.find((i) => i.id === id && i.slot === slot);
+      if (item) out[item.slot] = item.id;
+    }
+  }
+  return { base: base as PetBase, equipped: out };
 }
 
 export interface StudentPetRow {

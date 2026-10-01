@@ -3,16 +3,18 @@ import { PET_BASES, PET_ITEMS, getUnlockedItems, type PetBase, type PetSlot } fr
 
 interface Props {
   studentXp: number;
+  /** Item ids unlocked by campaign rewards (not by XP). */
+  extraItems?: string[];
   initialBase: PetBase;
   initialEquipped: Partial<Record<PetSlot, string>>;
 }
 
-export function PetCustomizer({ studentXp, initialBase, initialEquipped }: Props) {
+export function PetCustomizer({ studentXp, extraItems = [], initialBase, initialEquipped }: Props) {
   const [basePet, setBasePet] = useState<PetBase>(initialBase);
   const [equipped, setEquipped] = useState<Partial<Record<PetSlot, string>>>(initialEquipped);
   const [saving, setSaving] = useState(false);
   
-  const unlocked = getUnlockedItems(studentXp);
+  const unlocked = getUnlockedItems(studentXp, extraItems);
   const activeBase = PET_BASES.find(b => b.id === basePet) || PET_BASES[0];
 
   const toggleItem = (id: string, slot: PetSlot) => {
@@ -111,7 +113,7 @@ export function PetCustomizer({ studentXp, initialBase, initialEquipped }: Props
         <div class="bg-slate-50 rounded-3xl p-6 border-2 border-slate-100">
            <h2 class="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wide">Próximos desbloqueos</h2>
            <div class="flex gap-2 overflow-x-auto pb-2 opacity-50 grayscale">
-             {PET_ITEMS.filter(i => i.unlockXp > studentXp).slice(0, 4).map(item => (
+             {PET_ITEMS.filter(i => i.unlockXp > studentXp && !extraItems.includes(i.id)).slice(0, 4).map(item => (
                <div key={item.id} class="flex-shrink-0 flex flex-col items-center bg-white p-2 rounded-xl border-2 border-slate-200 min-w-[4rem]">
                  <span class="text-2xl">{item.emoji.split(' ')[0]}</span>
                  <span class="text-xs font-bold text-slate-400 mt-1">{item.unlockXp} XP</span>
