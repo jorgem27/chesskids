@@ -6,3 +6,9 @@ dist/
 .DS_Store
 .sync.zip
 seed/lichess/
+
+# DB dumps and tool logs
+backup.sql
+*.sql.bak
+dump*.sql
+.playwright-mcp/
