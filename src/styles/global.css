@@ -77,6 +77,12 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
   background-size: 25% 25%;
   border-radius: 6px;
 }
+/* PGN lessons: a variation ("¿Y si…?") is played on a slightly bluer board */
+.ck-board.ck-variation cg-board {
+  background-color: #e6f0fa;
+  background-image: repeating-conic-gradient(#7fb0d6 0 25%, transparent 0 50%);
+}
+.ck-board.ck-variation .cg-wrap, .ck-board.ck-variation > div:first-child { box-shadow: 0 6px 0 #0369a133, 0 14px 40px #0369a144; }
 .ck-board cg-container { border-radius: 6px; }
 .ck-board .cg-wrap, .ck-board > div:first-child { border-radius: 8px; box-shadow: 0 6px 0 #4d7c0f33, 0 14px 40px #3b076433; }
 .ck-board cg-board square.move-dest { background: radial-gradient(rgb(124 58 237 / .45) 22%, transparent 24%); }

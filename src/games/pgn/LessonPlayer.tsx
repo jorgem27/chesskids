@@ -27,6 +27,7 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
   const [glow, setGlow] = useState(0);
   const questions = lesson.steps.filter((s) => s.kind === 'ask').length;
   const [answered, setAnswered] = useState(0);
+  const [depth, setDepth] = useState(0); // > 0 while exploring a variation
 
   function waitTap(then: () => void) {
     st.current.waiting = then;
@@ -59,6 +60,21 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
     then();
   }
 
+  /** Into or out of a variation: say it, then walk the board through the path (rewinding moves one by one). */
+  function jump(step: Extract<Step, { kind: 'jump' }>, then: () => void) {
+    cg.current!.setAutoShapes([]);
+    setDepth(step.depth);
+    api.say(step.text, { speak: api.ageGroup === 'peque' });
+    sfx.pop();
+    step.path.forEach((f, k) => setTimeout(() => {
+      chess.current.load(f.fen);
+      syncBoard(cg.current!, chess.current, { movable: null, lastMove: f.lastMove });
+      sfx.move();
+    }, 600 + k * 450));
+    // Entering a variation pauses longer so there is time to read the "¿Y si…?".
+    setTimeout(then, 600 + step.path.length * 450 + (step.depth ? 1500 : 700));
+  }
+
   function run(i: number) {
     const s = st.current;
     s.i = i;
@@ -69,6 +85,7 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
     }
     api.progress(i, lesson.steps.length);
     const step = lesson.steps[i];
+    if (step.kind === 'jump') return jump(step, () => run(i + 1));
     if (step.kind === 'auto') {
       playMove(step.uci, () => showText(step.text, step.shapes, step.wait, () => run(i + 1)), step.text ? 500 : 800);
       return;
@@ -168,11 +185,13 @@ export function LessonPlayer({ content, api, title }: PlayerProps<LessonContent>
   return (
     <div class="flex w-full flex-col items-center gap-3">
       <div class="flex w-full max-w-[min(92vw,66vh)] items-center justify-between text-sm font-bold text-slate-500">
-        <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">📖 {title || lesson.title}</span>
+        {depth > 0
+          ? <span class="rounded-full bg-sky-200 px-3 py-1 text-sky-900 shadow-sm">🔀 Variante</span>
+          : <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">📖 {title || lesson.title}</span>}
         <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">❓ {answered} / {questions}</span>
       </div>
       <div class="w-full max-w-[min(92vw,66vh)]">
-        <Board config={{ fen: lesson.startFen, orientation: lesson.orientation }} onReady={ready} shake={shake} glow={glow} />
+        <Board config={{ fen: lesson.startFen, orientation: lesson.orientation }} onReady={ready} shake={shake} glow={glow} class={depth > 0 ? 'ck-variation' : ''} />
       </div>
       <div class="h-16">
         {waiting && (

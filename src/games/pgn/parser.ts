@@ -144,6 +144,11 @@ const BRUSH: Record<string, string> = { G: 'green', R: 'red', Y: 'yellow', B: 'b
  *  [%hint texto]       on the question move: a hint shown after a wrong try
  *  [%wait]             pause here until the student taps "Continuar"
  *  [%cal Ge2e4,Rd1d8]  arrows (Lichess format)   [%csl Gd4,Re5]  circles (Lichess format)
+ *
+ * Variations: on a question move they are the other answers ([%pts], [%retry], or wrong).
+ * Any variation with an [%ask] further on is also a side line: after the game move the board goes back,
+ * plays the variation (blue board) with its questions, rewinds it and returns to the game.
+ *   2. Nf3 Nc6 ( 2... d6 { [%ask ¿Qué jugarías tú?] } 3. d4 ) 3. Bb5
  */
 export function parseComment(raw: string): CommentInfo {
   const info: CommentInfo = { text: '', wait: false, retry: false, shapes: [] };

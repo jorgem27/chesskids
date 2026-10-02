@@ -5,21 +5,16 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 echo ========================================================
-echo      ChessKids Academy - Push Code & Database
+echo      ChessKids Academy - Push Code ^& Database
 echo ========================================================
 echo.
 
 :: Determine commit message (all arguments captured together, no quotes needed)
 set "COMMIT_MSG=%*"
-if "%COMMIT_MSG%"=="" (
-    set /p "COMMIT_MSG=Enter commit message (press Enter for default): "
-)
-if defined COMMIT_MSG (
-    set "COMMIT_MSG=!COMMIT_MSG:"=!"
-)
-if "!COMMIT_MSG!"=="" (
-    set "COMMIT_MSG=Update code and database - %DATE% %TIME%"
-)
+:: Strip quotes with delayed expansion so quoted messages can't break parsing
+if defined COMMIT_MSG set "COMMIT_MSG=!COMMIT_MSG:"=!"
+if not defined COMMIT_MSG set /p "COMMIT_MSG=Enter commit message (press Enter for default): "
+if not defined COMMIT_MSG set "COMMIT_MSG=Update code and database - %DATE% %TIME%"
 
 :: Step 1: Git Add, Commit & Push
 echo.

@@ -217,6 +217,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
   const [glow, setGlow] = useState(0);
   const [bump, setBump] = useState(-1);
   const [banner, setBanner] = useState<{ text: string; color: string } | null>(null);
+  const [depth, setDepth] = useState(0); // > 0 while exploring a variation
   const questions = lesson.steps.filter((s) => s.kind === 'ask').length;
 
   const setM = (m: Mode) => { S.current.mode = m; setMode(m); };
@@ -253,6 +254,21 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
     setCaption(''); setQuestion(''); setRebound(false);
     if (i >= lesson.steps.length) { onEnd(Math.max(1, s.q + 1)); return; }
     const step = lesson.steps[i];
+    if (step.kind === 'jump') {
+      // Into or out of a variation: announce it, then walk the board through the path (rewinding moves one by one).
+      setM('auto');
+      setDepth(step.depth);
+      cg.current!.setAutoShapes([]);
+      flash(step.text, step.depth ? '#0284c7' : '#7c3aed', 1600);
+      sfx.pop();
+      step.path.forEach((f, k) => setTimeout(() => {
+        chess.current.load(f.fen);
+        syncBoard(cg.current!, chess.current, { movable: null, lastMove: f.lastMove });
+        sfx.move();
+      }, 700 + k * 450));
+      setTimeout(() => run(i + 1), 700 + step.path.length * 450 + (step.depth ? 1500 : 700));
+      return;
+    }
     if (step.kind === 'auto') {
       setM('auto');
       playMove(step.uci, () => {
@@ -440,8 +456,9 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
           {rebound && mode !== 'done' && <span class="mr-2 rounded-full bg-amber-400 px-3 text-amber-950">REBOTE</span>}
           {question ? `❓ ${question}` : ''}
         </p>
-        <div class="w-full max-w-[min(92vw,70vh)]">
-          <Board config={{ fen: lesson.startFen, orientation: lesson.orientation }} shake={shake} glow={glow}
+        <div class="relative w-full max-w-[min(92vw,70vh)]">
+          {depth > 0 && <span class="absolute -top-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-sky-300 px-4 py-1 font-display text-lg font-extrabold text-sky-950 shadow-lg">🔀 VARIANTE</span>}
+          <Board config={{ fen: lesson.startFen, orientation: lesson.orientation }} shake={shake} glow={glow} class={depth > 0 ? 'ck-variation' : ''}
             onReady={(a) => {
               cg.current = a;
               a.set({ movable: { events: { after: onMove } } });
