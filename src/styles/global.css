@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Self-hosted fonts (latin subset covers Spanish): no requests to Google from student pages. */
+@import "@fontsource/cinzel/latin-600.css";
+@import "@fontsource/cinzel/latin-700.css";
+@import "@fontsource/outfit/latin-500.css";
+@import "@fontsource/outfit/latin-600.css";
+@import "@fontsource/outfit/latin-700.css";
+@import "@fontsource/outfit/latin-800.css";
+@import "@fontsource/nunito/latin-500.css";
+@import "@fontsource/nunito/latin-700.css";
+@import "@fontsource/nunito/latin-800.css";
+@import "@fontsource/nunito/latin-900.css";
+
 /* Odisea Miranda palette: deep navy/royal blue ("brand") and laurel gold ("gold"). */
 @theme {
   --font-display: "Outfit", "Nunito", system-ui, sans-serif;
@@ -180,3 +192,33 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
   [style*="ck-pop"], [style*="ck-wiggle"], [style*="ck-spin-slow"], [style*="ck-slide-up"] { animation: none !important; }
   .transition, .transition-transform { transition: none !important; }
 }
+
+/* ---------- Accessibility settings (⚙️ Ajustes, src/lib/a11y.ts) ---------- */
+/* Bigger text: Tailwind sizes are in rem, so scaling the root scales the whole UI. */
+html[data-text="lg"] { font-size: 118.75%; }
+
+/* Fewer animations: same as prefers-reduced-motion, chosen by hand. */
+html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion="reduce"] .ck-rise { opacity: 1; transform: none; }
+
+/* High contrast: darker greys, solid borders on cards and inputs, strong focus ring, underlined links. */
+html[data-contrast="high"] {
+  --color-slate-300: #64748b;
+  --color-slate-400: #334155;
+  --color-slate-500: #1e293b;
+  --color-slate-600: #0f172a;
+  --color-brand-100: #bccdee;
+  --color-brand-600: #1d3366;
+  --color-brand-700: #162750;
+  --color-gold-700: #5c3a19;
+  --color-gold-800: #351e09;
+}
+html[data-contrast="high"] .ck-card, html[data-contrast="high"] .ck-input { border: 2px solid #0f172a; }
+html[data-contrast="high"] main p a { text-decoration: underline; text-underline-offset: 3px; }
+html[data-contrast="high"] :focus-visible { outline: 4px solid #000 !important; outline-offset: 2px; box-shadow: 0 0 0 6px #fde047 !important; }
+html[data-contrast="high"] .opacity-90 { opacity: 1 !important; }

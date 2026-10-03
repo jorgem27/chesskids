@@ -28,6 +28,8 @@ document.addEventListener('submit', (e) => {
   const form = e.target as HTMLFormElement;
   if (form.action?.includes('/api/auth/logout')) {
     try { localStorage.removeItem('ck-student'); } catch { /* ignore */ }
+    // Streak reminders belong to the kid who turned them on, not to the device.
+    void navigator.serviceWorker?.getRegistration('/').then((r) => r?.pushManager?.getSubscription()).then((sub) => sub?.unsubscribe()).catch(() => {});
     if ('caches' in window) void caches.delete('ck-pages');
   }
 });
