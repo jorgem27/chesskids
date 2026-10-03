@@ -1,0 +1,189 @@
+---
+import { GAME_META } from '../../games/meta';
+import { dailyActivityQuery, today, type StudentRow } from '../../lib/db';
+import { addDays, relativeDay, shortDate } from '../../lib/dates';
+import { themeStats } from '../../lib/insights';
+import { accuracy, dailySeries, fmtDuration, totals, trend, type DailyActivity } from '../../lib/analytics';
+import { KINGDOMS, kingdomIndex, levelProgress, ratingBand, startRating, STICKERS } from '../../lib/rewards';
+
+interface Props { student: StudentRow; family?: boolean }
+// Shared by the student's "Mi progreso" page and the read-only family report (/familia/<token>).
+const { student: s, family = false } = Astro.props;
+const db = Astro.locals.db;
+const t = today();
+const DAYS = 14;
+const since = addDays(t, -(DAYS * 2 - 1)); // two windows: this fortnight and the previous one
+const [daily, acc, byType, recent, themesRes, stickers] = await db.batch<any>([
+  dailyActivityQuery(db, s.id, since),
+  db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(ok), 0) AS ok FROM item_results WHERE student_id = ? AND day >= ?').bind(s.id, addDays(t, -29)),
+  db.prepare(
+    `SELECT a.type, COUNT(*) AS plays, ROUND(AVG(at.stars), 1) AS stars, SUM(at.seconds) AS secs
+     FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ? GROUP BY a.type ORDER BY plays DESC`,
+  ).bind(s.id),
+  db.prepare(
+    `SELECT a.title, a.type, at.stars, at.mistakes, at.seconds, at.xp_earned, at.day
+     FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ? ORDER BY at.id DESC LIMIT 6`,
+  ).bind(s.id),
+  db.prepare(
+    `SELECT p.themes, ir.ok FROM item_results ir JOIN lichess_puzzles p ON p.id = ir.lichess_id
+     WHERE ir.student_id = ? AND ir.lichess_id IS NOT NULL ORDER BY ir.id DESC LIMIT 200`,
+  ).bind(s.id),
+  db.prepare('SELECT COUNT(*) AS n FROM student_stickers WHERE student_id = ?').bind(s.id),
+]);
+
+const all = dailySeries(daily.results as DailyActivity[], t, DAYS * 2);
+const prev = totals(all.slice(0, DAYS));
+const series = all.slice(DAYS);
+const cur = totals(series);
+const xpTrend = trend(cur.xp, prev.xp);
+const maxXp = Math.max(20, ...series.map((d) => d.xp));
+const accRow = acc.results[0] as { n: number; ok: number };
+const accPct = accuracy(accRow.ok, accRow.n);
+const types = byType.results as { type: string; plays: number; stars: number; secs: number }[];
+const maxPlays = Math.max(1, ...types.map((x) => x.plays));
+const themes = themeStats((themesRes.results as { themes: string; ok: number }[]).map((r) => ({ themes: r.themes, ok: !!r.ok })), 3);
+const weak = themes.filter((x) => x.rate >= 1 / 3).slice(0, 3);
+const strong = themes.filter((x) => x.rate < 1 / 3).sort((a, b) => a.rate - b.rate).slice(0, 3);
+const lp = levelProgress(s.xp);
+const kingdom = KINGDOMS[kingdomIndex(s.xp)];
+const rating = s.puzzle_rating || startRating(s.age_group);
+const band = ratingBand(rating);
+const streak = s.last_active_day && s.last_active_day >= addDays(t, -1) ? s.streak : 0;
+const stickerCount = (stickers.results[0] as { n: number }).n;
+const WD = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const weekday = (d: string) => WD[new Date(d + 'T12:00:00Z').getUTCDay()];
+const kpis = [
+  { icon: '🏅', label: 'Nivel', value: lp.level, sub: `${lp.inLevel}/${lp.needed} XP` },
+  { icon: '⭐', label: 'XP total', value: s.xp, sub: kingdom.name },
+  { icon: '🧩', label: 'Problemas', value: s.puzzles_solved, sub: 'resueltos' },
+  { icon: '⏱️', label: 'Tiempo', value: fmtDuration(s.total_seconds), sub: 'aprendiendo' },
+  { icon: '🔥', label: 'Racha', value: streak, sub: `mejor: ${s.best_streak}` },
+  { icon: band.emoji, label: 'Táctica', value: rating, sub: band.name },
+];
+---
+  {!family && (
+    <div class="ck-rise">
+      <h1 class="font-display text-3xl font-extrabold text-brand-900 md:text-4xl">📊 Mi progreso</h1>
+      <p class="font-bold text-slate-500">Mira cuánto has avanzado. ¡Cada día cuenta!</p>
+    </div>
+  )}
+
+  <dl class="ck-rise mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    {kpis.map((k) => (
+      <div class="om-stat">
+        <dt><span aria-hidden="true">{k.icon}</span> {k.label}</dt>
+        <dd>{k.value}</dd>
+        <dd class="!font-sans !text-xs !font-bold !text-slate-500">{k.sub}</dd>
+      </div>
+    ))}
+  </dl>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div class="space-y-6">
+      <section class="ck-card">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+          <h2 class="font-display text-xl font-extrabold">Últimos {DAYS} días</h2>
+          {xpTrend !== null && (
+            <span class={`rounded-full px-2.5 py-1 text-sm font-extrabold ${xpTrend >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-gold-50 text-gold-800'}`}>
+              {xpTrend >= 0 ? `▲ ${xpTrend}% más XP que antes 🚀` : `▼ ${Math.abs(xpTrend)}% · ¡a por más! 💪`}
+            </span>
+          )}
+        </div>
+        <div class="mt-4 flex h-40 items-end gap-1 sm:gap-1.5" role="img" aria-label={`XP por día en los últimos ${DAYS} días: ${cur.xp} XP en total`}>
+          {series.map((d) => (
+            <div class="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${shortDate(d.day)}: ${d.xp} XP, ${d.solved} problemas, ${fmtDuration(d.secs)}`}>
+              <span class="text-xs font-bold text-slate-600 tabular-nums">{d.xp || ''}</span>
+              <div class={`w-full rounded-t-md ${d.xp ? (d.day === t ? 'bg-gradient-to-t from-gold-500 to-gold-300' : 'bg-gradient-to-t from-brand-700 to-brand-400') : 'bg-slate-100'}`} style={`height:${Math.max(4, (d.xp / maxXp) * 110)}px`}></div>
+              <span class={`text-xs font-bold ${d.day === t ? 'text-gold-700' : 'text-slate-600'}`}>{weekday(d.day)}</span>
+            </div>
+          ))}
+        </div>
+        <dl class="mt-4 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+          <div class="rounded-xl bg-brand-50 p-2"><dt class="text-xs font-bold text-slate-500">XP</dt><dd class="font-display text-xl font-extrabold text-brand-800 tabular-nums">{cur.xp}</dd></div>
+          <div class="rounded-xl bg-brand-50 p-2"><dt class="text-xs font-bold text-slate-500">Problemas</dt><dd class="font-display text-xl font-extrabold text-brand-800 tabular-nums">{cur.solved}</dd></div>
+          <div class="rounded-xl bg-brand-50 p-2"><dt class="text-xs font-bold text-slate-500">Tiempo</dt><dd class="font-display text-xl font-extrabold text-brand-800">{fmtDuration(cur.secs)}</dd></div>
+          <div class="rounded-xl bg-brand-50 p-2"><dt class="text-xs font-bold text-slate-500">Días jugando</dt><dd class="font-display text-xl font-extrabold text-brand-800 tabular-nums">{cur.activeDays}/{DAYS}</dd></div>
+        </dl>
+      </section>
+
+      <section class="ck-card">
+        <h2 class="font-display text-xl font-extrabold">🎮 Lo que más juegas</h2>
+        {types.length === 0 && <p class="mt-2 text-slate-500">¡Juega tu primera misión y aquí verás tus números!</p>}
+        <ul class="mt-3 space-y-3">
+          {types.map((x) => {
+            const meta = GAME_META[x.type];
+            return (
+              <li>
+                <div class="flex items-center justify-between gap-2 text-sm font-bold">
+                  <span class="truncate">{meta?.emoji} {meta?.name ?? x.type}</span>
+                  <span class="shrink-0 text-slate-500 tabular-nums">{x.plays} {x.plays === 1 ? 'vez' : 'veces'} · ⭐ {x.stars ?? 0} · {fmtDuration(x.secs ?? 0)}</span>
+                </div>
+                <div class="mt-1 h-2.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-brand-500" style={`width:${(x.plays / maxPlays) * 100}%`}></div></div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {recent.results.length > 0 && (
+        <section class="ck-card !p-0 overflow-hidden">
+          <h2 class="p-4 pb-2 font-display text-xl font-extrabold">🕑 Lo último que has jugado</h2>
+          <ul class="divide-y divide-slate-100">
+            {(recent.results as any[]).map((r) => (
+              <li class="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span class="text-xl" aria-hidden="true">{GAME_META[r.type]?.emoji}</span>
+                <span class="min-w-0 flex-1 truncate font-bold">{r.title}</span>
+                <span aria-label={`${r.stars} estrellas`}>{[0, 1, 2].map((k) => <span class={r.stars > k ? '' : 'opacity-25 grayscale'}>⭐</span>)}</span>
+                <span class="w-14 text-right text-xs font-bold text-gold-700">+{r.xp_earned} XP</span>
+                <span class="w-16 text-right text-xs text-slate-500">{relativeDay(r.day, t)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+
+    <aside class="space-y-6">
+      <section class="ck-card">
+        <h2 class="font-display text-lg font-extrabold">🎯 Puntería</h2>
+        {accPct === null ? (
+          <p class="mt-1 text-sm text-slate-500">Resuelve algunos problemas para ver tu puntería.</p>
+        ) : (
+          <div class="mt-2 flex items-center gap-4">
+            <svg width="84" height="84" viewBox="0 0 80 80" class="-rotate-90" role="img" aria-label={`${accPct}% a la primera`}>
+              <circle cx="40" cy="40" r="32" stroke="#dbe5f6" stroke-width="10" fill="none" />
+              <circle cx="40" cy="40" r="32" stroke="#e2ae34" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray={2 * Math.PI * 32} stroke-dashoffset={2 * Math.PI * 32 * (1 - accPct / 100)} />
+            </svg>
+            <div>
+              <p class="font-display text-3xl font-extrabold text-brand-900">{accPct}%</p>
+              <p class="text-sm text-slate-600">a la primera en los últimos 30 días ({accRow.n} retos)</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {themes.length > 0 && (
+        <section class="ck-card">
+          <h2 class="font-display text-lg font-extrabold">🧠 Tus temas</h2>
+          {strong.length > 0 && <>
+            <p class="mt-2 text-xs font-extrabold uppercase tracking-wide text-emerald-700">Tus superpoderes</p>
+            <ul class="mt-1 space-y-1 text-sm">{strong.map((th) => <li>{th.emoji} {th.label} <span class="text-xs text-slate-500">· {Math.round((1 - th.rate) * 100)}% acertados</span></li>)}</ul>
+          </>}
+          {weak.length > 0 && <>
+            <p class="mt-3 text-xs font-extrabold uppercase tracking-wide text-gold-700">Para entrenar</p>
+            <ul class="mt-1 space-y-1 text-sm">{weak.map((th) => <li>{th.emoji} {th.label} <span class="text-xs text-slate-500">· {th.played} jugados</span></li>)}</ul>
+            {!family && <a href="/app/practica/entrena" class="ck-btn ck-btn-primary mt-3 w-full !py-2 !text-base">🏋️ Entrenar ahora</a>}
+          </>}
+        </section>
+      )}
+
+      <section class="ck-card">
+        <h2 class="font-display text-lg font-extrabold">🏆 Tus recompensas</h2>
+        <ul class="mt-2 space-y-2 text-sm font-bold">
+          <li><a href={family ? undefined : '/app/mapa'} class="flex min-h-11 items-center gap-3 rounded-xl bg-brand-50 px-3 hover:bg-brand-100"><span class="text-2xl">{kingdom.emoji}</span><span class="flex-1">{kingdom.name}</span>{!family && <span aria-hidden="true">→</span>}</a></li>
+          <li><a href={family ? undefined : '/app/album'} class="flex min-h-11 items-center gap-3 rounded-xl bg-gold-50 px-3 hover:bg-gold-100"><span class="text-2xl">📒</span><span class="flex-1">{stickerCount} de {STICKERS.length} cromos</span>{!family && <span aria-hidden="true">→</span>}</a></li>
+          <li class="flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 px-3"><span class="text-2xl">🎮</span><span class="flex-1">{s.games_completed} actividades completadas</span></li>
+        </ul>
+      </section>
+    </aside>
+  </div>

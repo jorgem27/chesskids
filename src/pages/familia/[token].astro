@@ -1,0 +1,82 @@
+---
+// Read-only progress report for the family. The link is a bearer secret created by the coach
+// (students.family_token): it shows the student's progress and never logs anyone in.
+import Base from '../../layouts/Base.astro';
+import ProgressReport from '../../components/student/ProgressReport.astro';
+import { GAME_META } from '../../games/meta';
+import { studentMissions, today, type ClassRow, type StudentRow } from '../../lib/db';
+import { dueLabel } from '../../lib/dates';
+
+const token = String(Astro.params.token ?? '');
+const db = Astro.locals.db;
+const s = /^[A-Za-z0-9_-]{16,64}$/.test(token)
+  ? await db.prepare('SELECT * FROM students WHERE family_token = ? AND archived = 0').bind(token).first<StudentRow>()
+  : null;
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+if (!s) Astro.response.status = 404;
+const [cls, missions] = s
+  ? await Promise.all([
+      db.prepare('SELECT c.*, cb.name AS club_name FROM classes c JOIN clubs cb ON cb.id = c.club_id WHERE c.id = ?').bind(s.class_id).first<ClassRow & { club_name: string }>(),
+      studentMissions(db, s.id, s.class_id),
+    ])
+  : [null, []];
+const t = today();
+---
+<Base title={s ? `Progreso de ${s.display_name} · Odisea Miranda` : 'Informe no disponible · Odisea Miranda'} age={s?.age_group} noindex>
+  <div class="min-h-dvh bg-gradient-to-b from-brand-50 via-[#f3f5fa] to-gold-50 pb-10">
+    <header class="om-night">
+      <div class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 md:px-6">
+        <img src="/brand/logo-96.webp" width="36" height="36" alt="" />
+        <span class="font-brand text-lg font-bold om-gold-text">Odisea Miranda</span>
+        <span class="ml-auto rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-brand-100">👪 Informe para familias</span>
+      </div>
+      <div class="om-meander"></div>
+    </header>
+    <main class="mx-auto max-w-5xl px-4 pt-5 md:px-6">
+      {!s || !cls ? (
+        <div class="ck-card mx-auto mt-10 max-w-md text-center">
+          <p class="text-5xl">🔒</p>
+          <h1 class="mt-2 font-display text-2xl font-extrabold">Este enlace ya no funciona</h1>
+          <p class="mt-2 text-slate-600">Pide al profe un enlace nuevo del informe de progreso.</p>
+        </div>
+      ) : (
+        <>
+          <section class="ck-card flex flex-wrap items-center gap-4">
+            <span class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-5xl" aria-hidden="true">{s.avatar}</span>
+            <div class="min-w-0 flex-1">
+              <h1 class="font-display text-3xl font-extrabold text-brand-900">Progreso de {s.display_name}</h1>
+              <p class="text-sm font-bold text-slate-500">{cls.emoji} {cls.name} · {cls.club_name}</p>
+            </div>
+          </section>
+
+          {missions.length > 0 && (
+            <section class="ck-card mt-5">
+              <h2 class="font-display text-xl font-extrabold">🎒 Misiones de su profe</h2>
+              <ul class="mt-2 divide-y divide-slate-100">
+                {missions.map((m) => {
+                  const due = dueLabel(m.due_on, t);
+                  return (
+                    <li class="flex flex-wrap items-center gap-2 py-2 text-sm">
+                      <span aria-hidden="true">{GAME_META[m.type]?.emoji}</span>
+                      <span class="min-w-0 flex-1 truncate font-bold">{m.title}</span>
+                      {m.plays ? <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">✅ Hecha {'⭐'.repeat(m.best_stars ?? 0)}</span>
+                        : <span class={`rounded-full px-2 py-0.5 text-xs font-bold bg-amber-50 text-amber-800`}>⏳ Pendiente · {due.text}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          <div class="mt-5"><ProgressReport student={s} family /></div>
+
+          <p class="mt-8 text-center text-xs text-slate-500">
+            Enlace privado de solo lectura: no lo compartas. Puede entrar a jugar desde el enlace o los dibujos que le dio su profe.
+            <a href="/privacidad" class="font-bold text-brand-700">Privacidad</a>
+          </p>
+        </>
+      )}
+    </main>
+  </div>
+</Base>

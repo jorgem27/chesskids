@@ -1,0 +1,82 @@
+---
+// Printable class report: "Imprimir / Guardar como PDF" from the browser. Same data as the CSV.
+import Base from '../../../../layouts/Base.astro';
+import { classPerm, type ClassRow } from '../../../../lib/db';
+import { classReport } from '../../../../lib/report';
+import { relativeDay, shortDate } from '../../../../lib/dates';
+
+const db = Astro.locals.db;
+const classId = Number(Astro.params.id);
+const perm = await classPerm(db, Astro.locals.coach!.id, classId);
+if (!perm || !(perm.is_owner || perm.can_view_progress)) return Astro.redirect('/profe');
+const cls = (await db.prepare('SELECT c.*, cb.name AS club_name FROM classes c JOIN clubs cb ON cb.id = c.club_id WHERE c.id = ?').bind(classId).first<ClassRow & { club_name: string }>())!;
+const { rows, homeworkTotal, since30, today } = await classReport(db, classId);
+const active7 = rows.filter((r) => r.xp7 > 0 || r.solved7 > 0).length;
+const solvedTotal = rows.reduce((n, r) => n + r.solved, 0);
+const hwPct = homeworkTotal && rows.length ? Math.round((rows.reduce((n, r) => n + r.homeworkDone, 0) / (homeworkTotal * rows.length)) * 100) : null;
+const maxXp30 = Math.max(1, ...rows.map((r) => r.xp30));
+const fmtMin = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`);
+---
+<Base title={`Informe · ${cls.name}`} noindex>
+  <main class="ck-report mx-auto max-w-5xl bg-white p-6 text-slate-800">
+    <div class="no-print mb-6 flex flex-wrap gap-2">
+      <a href={`/profe/clase/${classId}?tab=progreso`} class="ck-btn-sm">← Volver</a>
+      <button type="button" onclick="window.print()" class="ck-btn-sm !bg-brand-600 !text-white">🖨️ Imprimir o guardar PDF</button>
+      <a href={`/profe/clase/${classId}/progreso.csv`} class="ck-btn-sm">📊 Descargar CSV</a>
+    </div>
+
+    <header class="flex flex-wrap items-center gap-4 border-b-4 border-gold-400 pb-4">
+      <img src="/brand/logo-96.webp" width="56" height="56" alt="" />
+      <div class="flex-1">
+        <h1 class="font-display text-3xl font-extrabold text-brand-900">{cls.emoji} {cls.name}</h1>
+        <p class="text-sm text-slate-600">{cls.club_name} · Informe de progreso · {shortDate(today)} {today.slice(0, 4)}</p>
+      </div>
+    </header>
+
+    <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-brand-50 p-3"><dt class="text-xs font-bold text-slate-500">Alumnos</dt><dd class="font-display text-2xl font-extrabold">{rows.length}</dd></div>
+      <div class="rounded-xl bg-brand-50 p-3"><dt class="text-xs font-bold text-slate-500">Activos esta semana</dt><dd class="font-display text-2xl font-extrabold">{active7}</dd></div>
+      <div class="rounded-xl bg-brand-50 p-3"><dt class="text-xs font-bold text-slate-500">Misiones completadas</dt><dd class="font-display text-2xl font-extrabold">{hwPct === null ? '—' : `${hwPct}%`}</dd></div>
+      <div class="rounded-xl bg-brand-50 p-3"><dt class="text-xs font-bold text-slate-500">Problemas resueltos</dt><dd class="font-display text-2xl font-extrabold">{solvedTotal}</dd></div>
+    </dl>
+
+    <div class="mt-6 overflow-x-auto"><table class="w-full min-w-[720px] border-collapse text-sm print:min-w-0">
+      <thead>
+        <tr class="border-b-2 border-slate-300 text-left text-xs uppercase text-slate-500">
+          <th class="py-2 pr-2">Alumno</th><th class="px-2">Nivel</th><th class="px-2">XP</th><th class="px-2">Problemas</th><th class="px-2">Tiempo</th>
+          <th class="px-2">Misiones</th><th class="px-2">⭐ media</th><th class="px-2">Últimos 30 días</th><th class="px-2">Última vez</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr class="border-b border-slate-200">
+            <td class="py-2 pr-2 font-bold">{r.name}<br /><span class="text-xs font-normal text-slate-500">{r.group}</span></td>
+            <td class="px-2">{r.level}</td>
+            <td class="px-2 tabular-nums">{r.xp}</td>
+            <td class="px-2 tabular-nums">{r.solved}</td>
+            <td class="px-2">{fmtMin(r.minutes)}</td>
+            <td class="px-2 tabular-nums">{r.homeworkDone}/{r.homeworkTotal}</td>
+            <td class="px-2">{r.avgStars === null ? '—' : String(r.avgStars).replace('.', ',')}</td>
+            <td class="px-2">
+              <div class="flex items-center gap-2"><div class="h-2.5 w-24 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-brand-500" style={`width:${(r.xp30 / maxXp30) * 100}%`}></div></div><span class="text-xs tabular-nums">{r.xp30} XP · {r.activeDays30} {r.activeDays30 === 1 ? 'día' : 'días'}</span></div>
+            </td>
+            <td class="px-2 text-xs">{relativeDay(r.lastDay, today)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+    {!rows.length && <p class="mt-4 text-slate-500">La clase aún no tiene alumnos.</p>}
+    <p class="mt-4 text-sm text-slate-700">«Últimos 30 días» cuenta desde el {shortDate(since30)}: deberes, práctica y torneos en clase. Contiene datos personales de menores: compártelo solo con el club y con cada familia lo que le corresponda.</p>
+  </main>
+  <style is:global>
+    body { background: #f3f5fa; }
+    @media print {
+      @page { size: A4 landscape; margin: 12mm; }
+      body { background: white; }
+      .no-print { display: none !important; }
+      .ck-report { max-width: none; padding: 0; }
+      tr { break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</Base>

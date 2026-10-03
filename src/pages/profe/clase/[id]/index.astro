@@ -27,7 +27,7 @@ const { results: studentsRaw } = await db.prepare('SELECT * FROM students WHERE 
 const students = studentsRaw.map((s) => ({
   id: s.id, name: s.display_name, avatar: s.avatar, username: s.username, token: canManage ? s.login_token : '', age_group: s.age_group,
   xp: s.xp, level: levelFromXp(s.xp), streak: s.last_active_day && s.last_active_day >= addDays(t, -1) ? s.streak : 0,
-  last: relativeDay(s.last_active_day, t), total_seconds: s.total_seconds, puzzles: s.puzzles_solved,
+  last: relativeDay(s.last_active_day, t), total_seconds: s.total_seconds, puzzles: s.puzzles_solved, consent: !!s.consent_at,
 }));
 
 const { results: assignments } = await db.prepare(
@@ -202,6 +202,12 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
 
     {tab === 'progreso' && canView && (
       <div class="space-y-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <a href={`/profe/clase/${id}/informe`} class="ck-btn-sm">🖨️ Informe para imprimir / PDF</a>
+        <a href={`/profe/clase/${id}/progreso.csv`} class="ck-btn-sm">📊 Descargar CSV (Excel)</a>
+        <a href={`/profe/clase/${id}/temporada`} class="ck-btn-sm">🏆 Temporada</a>
+        <span class="text-xs text-slate-500">Para llevarlo al club o a las familias. Los informes semanales para cada familia están en 👧 Alumnos → 🔑 Acceso.</span>
+      </div>
       <div class="grid gap-4 lg:grid-cols-3">
         <section class="ck-card">
           <h2 class="font-display text-lg font-extrabold">🤝 Reto de la semana</h2>
