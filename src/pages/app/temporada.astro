@@ -1,0 +1,105 @@
+---
+import StudentLayout from '../../layouts/StudentLayout.astro';
+import { today } from '../../lib/db';
+import { shortDate } from '../../lib/dates';
+import {
+  badgeHint, daysLeft, nextTier, pastSeasons, SEASON_BADGES, seasonBadges, seasonFor, seasonLeaderboard, seasonTiers, tierFor,
+} from '../../lib/seasons';
+
+const s = Astro.locals.student!;
+const db = Astro.locals.db;
+const t = today();
+const season = seasonFor(t);
+const past = pastSeasons(season, 3);
+const [board, ...pastBoards] = await Promise.all([
+  seasonLeaderboard(db, s.class_id, season),
+  ...past.map((p) => seasonLeaderboard(db, s.class_id, p)),
+]);
+const me = board.find((r) => r.id === s.id) ?? { xp: 0, solved: 0, active_days: 0, rank: board.length };
+const stats = { xp: me.xp, solved: me.solved, activeDays: me.active_days, rank: me.rank, players: board.length };
+const earned = new Set(seasonBadges(stats, season));
+const tier = tierFor(me.xp, season);
+const next = nextTier(me.xp, season);
+const tiers = seasonTiers(season);
+const fromXp = tier?.xp ?? 0;
+const pct = next ? (me.xp - fromXp) / (next.xp - fromXp) : 1;
+const left = daysLeft(season, t);
+const medal = ['🥇', '🥈', '🥉'];
+const trophies = past.map((p, i) => {
+  const row = pastBoards[i].find((r) => r.id === s.id);
+  const st = row ? { xp: row.xp, solved: row.solved, activeDays: row.active_days, rank: row.rank, players: pastBoards[i].length } : null;
+  return { season: p, row, badges: st ? seasonBadges(st, p) : [] };
+}).filter((x) => x.row && x.row.xp > 0);
+---
+<StudentLayout title="Temporada · Odisea Miranda">
+  <section class="ck-card ck-rise relative overflow-hidden !p-0">
+    <div class="om-night p-5 md:p-6">
+      <p class="text-sm font-bold text-brand-200">{shortDate(season.start)} – {shortDate(season.end)}</p>
+      <h1 class="font-display text-3xl font-extrabold md:text-4xl"><span aria-hidden="true">{season.emoji}</span> {season.name}</h1>
+      <p class="mt-1 font-bold text-gold-200">{left === 0 ? '¡Último día de la temporada!' : `Quedan ${left} ${left === 1 ? 'día' : 'días'}. ¡Todos empezáis desde cero!`}</p>
+      <div class="mt-4 flex items-center gap-3">
+        <span class="text-5xl" aria-hidden="true">{tier?.emoji ?? '🎯'}</span>
+        <div class="min-w-0 flex-1">
+          <p class="font-display text-xl font-extrabold">{tier ? `Liga ${tier.name}` : 'Sin liga todavía'} · {me.xp} XP</p>
+          <div class="mt-1 h-3 overflow-hidden rounded-full bg-white/15" role="progressbar" aria-label="Progreso hacia la siguiente liga" aria-valuenow={Math.round(pct * 100)} aria-valuemin="0" aria-valuemax="100">
+            <div class="h-full rounded-full bg-gradient-to-r from-gold-300 to-gold-500" style={`width:${Math.max(3, pct * 100)}%`}></div>
+          </div>
+          <p class="mt-1 text-xs font-bold text-brand-100">{next ? `${next.xp - me.xp} XP para ${next.emoji} ${next.name}` : '¡Has llegado a la liga más alta! 💎'}</p>
+        </div>
+      </div>
+    </div>
+    <div class="om-meander"></div>
+  </section>
+
+  <section class="ck-card mt-6">
+    <h2 class="font-display text-2xl font-extrabold">🏅 Logros de esta temporada</h2>
+    <ul class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      {SEASON_BADGES.map((b) => {
+        const got = earned.has(b.id);
+        return (
+          <li class={`rounded-2xl p-3 text-center ${got ? 'bg-gold-50 ring-2 ring-gold-300' : 'bg-slate-50'}`}>
+            <p class={`text-4xl ${got ? '' : 'opacity-40 grayscale'}`} aria-hidden="true">{b.emoji}</p>
+            <p class="mt-1 font-display font-extrabold">{b.name}</p>
+            <p class="text-sm text-slate-700">{got ? '¡Conseguido! ✅' : badgeHint(b, season)}</p>
+          </li>
+        );
+      })}
+    </ul>
+    <p class="mt-3 text-sm text-slate-500">Llevas {me.active_days} {me.active_days === 1 ? 'día' : 'días'} jugando y {me.solved} problemas resueltos esta temporada.</p>
+  </section>
+
+  <section class="ck-card mt-6">
+    <h2 class="font-display text-2xl font-extrabold">🏆 Ranking de la temporada</h2>
+    <ol class="mt-3 space-y-2">
+      {[...board.slice(0, 15), ...board.slice(15).filter((r) => r.id === s.id)].map((r) => (
+        <li class={`flex items-center gap-3 rounded-2xl px-3 py-2 ${r.id === s.id ? 'bg-brand-100 ring-2 ring-brand-400' : 'bg-slate-50'}`}>
+          <span class="w-8 text-center font-display text-xl font-extrabold text-slate-500">{r.xp > 0 ? (medal[r.rank - 1] ?? r.rank) : '–'}</span>
+          <span class="text-3xl" aria-hidden="true">{r.avatar}</span>
+          <span class="flex-1 truncate font-bold">{r.display_name}{r.id === s.id && ' (tú)'}</span>
+          <span aria-hidden="true">{tierFor(r.xp, season)?.emoji ?? ''}</span>
+          <span class="font-display text-lg font-extrabold tabular-nums text-brand-600">{r.xp} XP</span>
+        </li>
+      ))}
+    </ol>
+    <p class="mt-2 text-xs text-slate-500">El ranking vuelve a empezar cada trimestre: ¡siempre puedes ganar!</p>
+  </section>
+
+  {trophies.length > 0 && (
+    <section class="ck-card mt-6">
+      <h2 class="font-display text-2xl font-extrabold">🗄️ Tu vitrina de temporadas</h2>
+      <ul class="mt-3 grid gap-3 sm:grid-cols-3">
+        {trophies.map((x) => (
+          <li class="rounded-2xl bg-gold-50 p-3">
+            <p class="font-display font-extrabold"><span aria-hidden="true">{x.season.emoji}</span> {x.season.name} {x.season.start.slice(0, 4)}</p>
+            <p class="text-sm font-bold text-slate-600">Puesto {x.row!.rank} · {x.row!.xp} XP</p>
+            <p class="mt-1 text-2xl">{x.badges.map((id) => SEASON_BADGES.find((b) => b.id === id)?.emoji).join(' ') || '—'}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <ul class="mt-6 flex flex-wrap justify-center gap-2 text-sm font-bold text-slate-700" aria-label="Ligas de la temporada">
+    {tiers.map((x) => <li class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{x.emoji} {x.name}: {x.xp} XP</li>)}
+  </ul>
+</StudentLayout>

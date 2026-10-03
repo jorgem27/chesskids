@@ -1,0 +1,56 @@
+---
+import CoachLayout from '../../../../layouts/CoachLayout.astro';
+import { classPerm, today, type ClassRow } from '../../../../lib/db';
+import { shortDate } from '../../../../lib/dates';
+import { daysLeft, pastSeasons, SEASON_BADGES, seasonBadges, seasonFor, seasonLeaderboard, tierFor } from '../../../../lib/seasons';
+
+const db = Astro.locals.db;
+const classId = Number(Astro.params.id);
+const perm = await classPerm(db, Astro.locals.coach!.id, classId);
+if (!perm || !(perm.is_owner || perm.can_view_progress)) return Astro.redirect('/profe');
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(classId).first<ClassRow>())!;
+const t = today();
+const season = seasonFor(t);
+const past = pastSeasons(season, 3);
+const [board, ...pastBoards] = await Promise.all([seasonLeaderboard(db, classId, season), ...past.map((p) => seasonLeaderboard(db, classId, p))]);
+const medal = ['🥇', '🥈', '🥉'];
+const badgesOf = (r: (typeof board)[number], players: number) => seasonBadges({ xp: r.xp, solved: r.solved, activeDays: r.active_days, rank: r.rank, players }, season);
+---
+<CoachLayout title={`Temporada · ${cls.name}`}>
+  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-brand-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
+  <h1 class="mt-2 font-display text-3xl font-extrabold">{season.emoji} {season.name}</h1>
+  <p class="text-slate-500">{shortDate(season.start)} – {shortDate(season.end)} · quedan {daysLeft(season, t)} días. El ranking y los logros se reinician cada trimestre.</p>
+
+  <section class="ck-card mt-5 overflow-x-auto !p-0">
+    <table class="w-full min-w-[640px] text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th class="p-3">#</th><th class="p-3">Alumno</th><th class="p-3">XP</th><th class="p-3">Problemas</th><th class="p-3">Días</th><th class="p-3">Logros</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {board.map((r) => (
+          <tr>
+            <td class="p-3 font-bold">{r.xp > 0 ? (medal[r.rank - 1] ?? r.rank) : '—'}</td>
+            <td class="p-3 font-bold"><span class="mr-1 text-xl" aria-hidden="true">{r.avatar}</span>{r.display_name}</td>
+            <td class="p-3 tabular-nums">{r.xp} {tierFor(r.xp, season)?.emoji}</td>
+            <td class="p-3 tabular-nums">{r.solved}</td>
+            <td class="p-3 tabular-nums">{r.active_days}</td>
+            <td class="p-3 text-lg">{badgesOf(r, board.length).map((id) => <span title={SEASON_BADGES.find((b) => b.id === id)?.name}>{SEASON_BADGES.find((b) => b.id === id)?.emoji}</span>)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <h2 class="mt-8 font-display text-2xl font-extrabold">Temporadas anteriores</h2>
+  <div class="mt-3 grid gap-4 md:grid-cols-3">
+    {past.map((p, i) => {
+      const top = pastBoards[i].filter((r) => r.xp > 0).slice(0, 3);
+      return (
+        <section class="ck-card">
+          <h3 class="font-display text-lg font-extrabold">{p.emoji} {p.name} {p.start.slice(0, 4)}</h3>
+          {top.length ? (
+            <ol class="mt-2 space-y-1 text-sm">{top.map((r) => <li>{medal[r.rank - 1] ?? r.rank} {r.avatar} <b>{r.display_name}</b> · {r.xp} XP</li>)}</ol>
+          ) : <p class="mt-2 text-sm text-slate-500">Sin actividad.</p>}
+        </section>
+      );
+    })}
+  </div>
+</CoachLayout>

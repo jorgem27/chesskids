@@ -1,6 +1,7 @@
 ---
 import StudentLayout from '../../layouts/StudentLayout.astro';
 import Welcome from '../../components/student/Welcome';
+import Tutorial from '../../components/student/Tutorial';
 import CoachPicker from '../../components/student/CoachPicker';
 import { GAME_META } from '../../games/meta';
 import { studentMissions, today, weeklyLeaderboard, xpToday, type ClassRow } from '../../lib/db';
@@ -9,12 +10,14 @@ import { countPendingMistakes, REVIEW_DAYS } from '../../lib/practice';
 import { addDays, dueLabel } from '../../lib/dates';
 import { DAILY_GOAL_XP, KINGDOMS, kingdomIndex, levelProgress, ratingBand, startRating, STICKERS, weeklyGoal } from '../../lib/rewards';
 import { PET_BASES } from '../../lib/pets';
+import { daysLeft, nextTier, seasonFor, seasonLeaderboard, tierFor } from '../../lib/seasons';
 
 const s = Astro.locals.student!;
 const db = Astro.locals.db;
 const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(s.class_id).first<ClassRow>())!;
 const t = today();
-const [missions, campaigns, board, dayXp, stickerCount, unlocks, pendingFix, dailyDone, ...results] = await Promise.all([
+const season = seasonFor(t);
+const [missions, campaigns, board, dayXp, stickerCount, unlocks, pendingFix, dailyDone, seasonBoard, ...results] = await Promise.all([
   studentMissions(db, s.id, s.class_id),
   getStudentCampaigns(db, s.class_id, s.id),
   weeklyLeaderboard(db, s.class_id),
@@ -23,6 +26,7 @@ const [missions, campaigns, board, dayXp, stickerCount, unlocks, pendingFix, dai
   studentUnlocks(db, s.id),
   countPendingMistakes(db, s.id, addDays(t, -REVIEW_DAYS)),
   db.prepare("SELECT solved FROM practice_sessions WHERE student_id = ? AND kind = 'diario' AND day = ? AND finished_at IS NOT NULL LIMIT 1").bind(s.id, t).first<{ solved: number }>(),
+  seasonLeaderboard(db, s.class_id, season),
   db.prepare('SELECT base_pet FROM student_pets WHERE student_id = ?').bind(s.id).first<{ base_pet: string }>(),
 ]);
 const activePetId = results[0]?.base_pet || 'peon';
@@ -52,9 +56,14 @@ const classSolved = board.reduce((n, r) => n + r.week_solved, 0);
 const mySolved = board.find((r) => r.id === s.id)?.week_solved ?? 0;
 const goalPctClass = Math.min(1, classSolved / goal);
 const helpers = board.filter((r) => r.week_solved > 0);
+const meSeason = seasonBoard.find((r) => r.id === s.id);
+const seasonXp = meSeason?.xp ?? 0;
+const seasonTier = tierFor(seasonXp, season);
+const seasonNext = nextTier(seasonXp, season);
 ---
 <StudentLayout title="Inicio · Odisea Miranda">
   {hola && <Welcome client:load name={s.display_name} missions={pending.length} />}
+  <Tutorial client:idle studentId={s.id} auto={s.games_completed === 0} />
 
   <!-- Hero -->
   <section class="ck-card ck-rise relative overflow-hidden !p-0">
@@ -277,10 +286,29 @@ const helpers = board.filter((r) => r.week_solved > 0);
     </ol>
   </section>
 
+  <!-- Season (resets every term) -->
+  <a href="/app/temporada" class="ck-card mt-6 block bg-gradient-to-br from-gold-50 to-white transition hover:-translate-y-1">
+    <div class="flex flex-wrap items-center gap-3">
+      <span class="text-5xl" aria-hidden="true">{seasonTier?.emoji ?? season.emoji}</span>
+      <div class="min-w-0 flex-1">
+        <h2 class="font-display text-2xl font-extrabold">{season.name}</h2>
+        <p class="text-sm font-bold text-slate-600">
+          {seasonXp > 0 ? `Puesto ${meSeason!.rank} de ${seasonBoard.length} · ${seasonXp} XP` : '¡Todos empezáis desde cero! Gana XP para subir'}
+          {seasonNext ? ` · ${seasonNext.xp - seasonXp} XP para ${seasonNext.emoji} ${seasonNext.name}` : ''}
+        </p>
+      </div>
+      <span class="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-gold-800 ring-1 ring-gold-200">⏳ {daysLeft(season, t)} {daysLeft(season, t) === 1 ? 'día' : 'días'}</span>
+    </div>
+    <p class="mt-2 text-right font-bold text-brand-600">Ver logros y ranking →</p>
+  </a>
+
   <CoachPicker client:visible />
 
-  <form method="post" action="/api/auth/logout" class="mt-8 text-center">
-    <button class="text-sm font-bold text-slate-400 hover:text-slate-600">Cerrar sesión en este dispositivo</button>
+  <p class="mt-8 text-center">
+    <button type="button" class="ck-btn-sm" onclick="document.dispatchEvent(new Event('ck-tutorial'))">❓ ¿Cómo se juega?</button>
+  </p>
+  <form method="post" action="/api/auth/logout" class="mt-4 text-center">
+    <button class="min-h-11 px-3 text-sm font-bold text-slate-600 hover:text-slate-800">Cerrar sesión en este dispositivo</button>
   </form>
 </StudentLayout>
 
