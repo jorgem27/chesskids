@@ -3,6 +3,10 @@
   "name": "chesskids-academy",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Custom entry: Astro's handler + a daily cron for the opt-in streak reminders (src/lib/push.ts).
+  "main": "./src/worker.ts",
+  // Every 10 min from 17:00 UTC (19:00 Madrid in summer, 18:00 in winter); each run sends a small batch.
+  "triggers": { "crons": ["*/10 17 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

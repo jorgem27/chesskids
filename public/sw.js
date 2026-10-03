@@ -4,7 +4,7 @@
 // - Student pages: network-first, falling back to the last cached copy when offline, so
 //   assigned games that were opened before keep working without a connection.
 // - /api/* is never cached: results made offline wait in the outbox (src/lib/outbox.ts).
-const VERSION = 'v2';
+const VERSION = 'v3';
 const STATIC = `ck-static-${VERSION}`;
 const PAGES = 'ck-pages'; // only ever holds the pages of the student logged in right now
 
@@ -65,4 +65,25 @@ self.addEventListener('fetch', (event) => {
       }
     })());
   }
+});
+
+// Opt-in streak reminders (src/lib/push.ts). Pushes carry no data: the text is always this one.
+self.addEventListener('push', (event) => {
+  event.waitUntil(self.registration.showNotification('¡Tu racha te espera! 🔥', {
+    body: 'Resuelve un problema hoy para no perderla. ¡Tú puedes! ♞',
+    icon: '/brand/icon-192.png',
+    badge: '/brand/favicon-48.png',
+    tag: 'ck-streak',
+    data: { url: '/app' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = all.find((c) => new URL(c.url).pathname.startsWith('/app'));
+    if (open) return open.focus();
+    return self.clients.openWindow('/app');
+  })());
 });
