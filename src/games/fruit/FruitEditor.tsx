@@ -38,7 +38,7 @@ function LevelGrid({ level, onChange }: { level: FruitLevel; onChange: (l: Fruit
             <button type="button" key={sq} onClick={() => click(sq)}
               class={`relative flex items-center justify-center text-[min(6vw,2.2rem)] leading-none ${dark ? 'bg-[#86c06c]' : 'bg-[#eef6d9]'} hover:brightness-95`}>
               {sq === level.start ? <span class="text-[min(8vw,2.8rem)]">{PIECE_ICON[level.piece]}</span> : fi >= 0 ? FRUITS[fi % FRUITS.length] : (level.rocks ?? []).includes(sq) ? '🪨' : ''}
-              {pathIndex.has(sq) && <span class="absolute right-0.5 top-0.5 rounded-full bg-violet-600 px-1 text-[10px] font-bold text-white">{pathIndex.get(sq)}</span>}
+              {pathIndex.has(sq) && <span class="absolute right-0.5 top-0.5 rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">{pathIndex.get(sq)}</span>}
               {y === 0 && <span class="absolute bottom-0 right-1 text-[9px] text-emerald-900/50">{sq[0]}</span>}
               {x === 0 && <span class="absolute left-0.5 top-0 text-[9px] text-emerald-900/50">{sq[1]}</span>}
             </button>
@@ -51,7 +51,7 @@ function LevelGrid({ level, onChange }: { level: FruitLevel; onChange: (l: Fruit
           <div class="flex gap-2">
             {(Object.keys(PIECE_NAMES) as FruitPiece[]).map((p) => (
               <button type="button" key={p} title={PIECE_NAMES[p]} onClick={() => onChange({ ...level, piece: p })}
-                class={`h-12 w-12 rounded-xl text-3xl ${level.piece === p ? 'bg-violet-600 text-white' : 'bg-slate-100'}`}>{PIECE_ICON[p]}</button>
+                class={`h-12 w-12 rounded-xl text-3xl ${level.piece === p ? 'bg-brand-600 text-white' : 'bg-slate-100'}`}>{PIECE_ICON[p]}</button>
             ))}
           </div>
         </div>
@@ -59,7 +59,7 @@ function LevelGrid({ level, onChange }: { level: FruitLevel; onChange: (l: Fruit
           <p class="mb-1 font-bold">Herramienta (toca el tablero)</p>
           <div class="flex flex-wrap gap-2">
             {tools.map(([t, label]) => (
-              <button type="button" key={t} onClick={() => setTool(t)} class={`ck-btn-sm ${tool === t ? '!bg-violet-600 !text-white' : ''}`}>{label}</button>
+              <button type="button" key={t} onClick={() => setTool(t)} class={`ck-btn-sm ${tool === t ? '!bg-brand-600 !text-white' : ''}`}>{label}</button>
             ))}
           </div>
         </div>

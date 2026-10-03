@@ -32,6 +32,6 @@ const unlocks = await studentUnlocks(db, s.id);
 const board = unlocks.has(rewardById('theme_space').id) ? 'space' : undefined;
 const activity = { id: a.id, type: a.type, title: a.title, content: JSON.parse(a.content_json) };
 ---
-<Base title={`${a.title} · ChessKids`} age={s.age_group}>
+<Base title={`${a.title} · Odisea Miranda`} age={s.age_group}>
   <GamePlayer client:only="preact" activity={activity} assignmentId={asg} campaignNodeId={campNode} ageGroup={s.age_group as AgeGroup} exitUrl={exitUrl} board={board} />
 </Base>

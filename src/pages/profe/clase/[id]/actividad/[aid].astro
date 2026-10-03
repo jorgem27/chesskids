@@ -73,7 +73,7 @@ const fmtTime = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`
 const pct = (r: number | null) => (r === null ? '—' : `${Math.round(r * 100)}%`);
 ---
 <CoachLayout title={`${activity.title} · ${cls.name}`} wide>
-  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-violet-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
+  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-brand-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
   <div class="mt-2 flex flex-wrap items-center gap-3">
     <span class={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${meta?.gradient} text-3xl`}>{meta?.emoji}</span>
     <div class="flex-1">

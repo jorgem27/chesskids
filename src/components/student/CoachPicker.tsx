@@ -6,7 +6,7 @@ import { Potroculo } from '../ui/Potroculo';
 
 const OPTIONS = [
   ...COACHES.map((c) => ({ id: c.id, emoji: c.emoji, image: c.image, name: c.name, tagline: c.tagline, circle: `bg-gradient-to-br ${c.gradient} shadow` })),
-  { id: 'random', emoji: '🎲', name: 'Sorpresa', tagline: 'Una distinta cada vez', circle: 'bg-gradient-to-br from-fuchsia-400 to-violet-600 shadow' },
+  { id: 'random', emoji: '🎲', name: 'Sorpresa', tagline: 'Una distinta cada vez', circle: 'bg-gradient-to-br from-gold-400 to-brand-600 shadow' },
   { id: 'none', emoji: '🔕', name: 'Sin voz', tagline: 'Solo sonidos', circle: 'bg-slate-200' },
 ];
 
@@ -55,9 +55,9 @@ export default function CoachPicker({ compact = false }: { compact?: boolean }) 
           return (
             <button key={o.id} type="button" onClick={() => choose(o.id)} aria-pressed={active}
               class={`relative flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-3 text-center transition motion-safe:active:scale-95 ${
-                active ? 'border-violet-500 bg-violet-50 ring-4 ring-violet-200' : 'border-slate-100 bg-white motion-safe:hover:-translate-y-0.5'
+                active ? 'border-brand-500 bg-brand-50 ring-4 ring-brand-200' : 'border-slate-100 bg-white motion-safe:hover:-translate-y-0.5'
               }`}>
-              {active && <span aria-hidden="true" class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">✓</span>}
+              {active && <span aria-hidden="true" class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-sm font-black text-white">✓</span>}
               {'image' in o && o.image
                 ? <img src={o.image} alt="" width={80} height={80} loading="lazy" class="h-20 w-20 rounded-2xl object-cover shadow" />
                 : <span aria-hidden="true" class={`flex h-20 w-20 items-center justify-center rounded-2xl text-4xl ${o.circle}`}>{o.emoji}</span>}

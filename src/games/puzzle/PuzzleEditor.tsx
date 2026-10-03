@@ -101,11 +101,11 @@ function PuzzleRecorder({ puzzle, onChange, blitz }: { puzzle: Puzzle; onChange:
           <input class="ck-input mt-1 w-full" placeholder="Ej: Mate en 2" value={puzzle.prompt ?? ''}
             onInput={(e) => onChange({ ...ref.current, prompt: (e.target as HTMLInputElement).value })} />
         </label>
-        <div class="rounded-2xl bg-violet-50 p-3">
-          <p class="font-bold text-violet-800">🎬 Solución grabada</p>
+        <div class="rounded-2xl bg-brand-50 p-3">
+          <p class="font-bold text-brand-800">🎬 Solución grabada</p>
           <p class="text-slate-600">Juega en el tablero la solución: tu jugada, la respuesta del rival, tu jugada…</p>
           <p class="mt-2 min-h-6 font-mono text-base">
-            {sans.length ? sans.map((s, i) => <span key={i} class={i % 2 === 0 ? 'font-bold text-violet-700' : 'text-slate-500'}>{s} </span>) : <span class="text-slate-400">— sin jugadas —</span>}
+            {sans.length ? sans.map((s, i) => <span key={i} class={i % 2 === 0 ? 'font-bold text-brand-700' : 'text-slate-500'}>{s} </span>) : <span class="text-slate-400">— sin jugadas —</span>}
           </p>
           <div class="mt-2 flex gap-2">
             <button type="button" class="ck-btn-sm" disabled={!puzzle.moves.length} onClick={() => setMoves(ref.current.moves.slice(0, -1))}>↶ Deshacer</button>
@@ -123,7 +123,7 @@ function PuzzleRecorder({ puzzle, onChange, blitz }: { puzzle: Puzzle; onChange:
             return (
               <div key={`${k}-${best}`} class="space-y-2 rounded-2xl bg-slate-50 p-3 text-sm">
                 <div class="flex flex-wrap items-center gap-3">
-                  <b class="rounded-full bg-violet-600 px-3 py-1 text-white">Jugada {k + 1}: {sans[2 * k]}</b>
+                  <b class="rounded-full bg-brand-600 px-3 py-1 text-white">Jugada {k + 1}: {sans[2 * k]}</b>
                   <label class="flex items-center gap-1 font-bold">⭐ Puntos
                     <input type="number" min={0} max={1000} class="ck-input w-20 !py-1" value={cfg.pts ?? DEFAULT_PTS[blitz ? 'blitz' : 'hint']}
                       onInput={(e) => patchStep(k, { pts: Math.max(0, Number((e.target as HTMLInputElement).value) || 0) })} />
@@ -211,7 +211,7 @@ export function PuzzleEditor({ value, onChange, clubId, suggestTitle }: EditorPr
       <div class="flex flex-wrap items-center gap-2">
         {puzzles.map((p, i) => (
           <button type="button" key={i} onClick={() => setSel(i)}
-            class={`h-11 w-11 rounded-xl text-lg font-black ${sel === i ? 'bg-violet-600 text-white' : p.moves.length ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'}`}>{i + 1}</button>
+            class={`h-11 w-11 rounded-xl text-lg font-black ${sel === i ? 'bg-brand-600 text-white' : p.moves.length ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'}`}>{i + 1}</button>
         ))}
         <button type="button" class="ck-btn-sm" onClick={add}>＋ Problema</button>
         <button type="button" class="ck-btn-sm" onClick={() => setShowBulk(!showBulk)}>📋 Importar varios</button>

@@ -7,8 +7,8 @@ const cur = kingdomIndex(s.xp);
 const xs = [50, 22, 70, 30, 76, 24, 68, 50];
 const list = KINGDOMS.map((k, i) => ({ ...k, i, x: xs[i] })).reverse();
 ---
-<StudentLayout title="Mapa · ChessKids">
-  <h1 class="ck-rise text-center font-display text-4xl font-extrabold text-violet-800">🗺️ Mapa de los reinos</h1>
+<StudentLayout title="Mapa · Odisea Miranda">
+  <h1 class="ck-rise text-center font-display text-4xl font-extrabold text-brand-800">🗺️ Mapa de los reinos</h1>
   <p class="text-center font-bold text-slate-500">Gana XP para viajar a nuevos reinos</p>
   <div class="relative mx-auto mt-6 max-w-lg overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-indigo-300 via-sky-200 to-lime-200 px-4 py-10 shadow-inner">
     <span class="ck-float absolute left-4 top-6 text-5xl opacity-70">☁️</span>
@@ -36,5 +36,5 @@ const list = KINGDOMS.map((k, i) => ({ ...k, i, x: xs[i] })).reverse();
       })}
     </div>
   </div>
-  <p class="mt-4 text-center font-bold text-slate-600">Tienes <span class="text-violet-600">{s.xp} XP</span></p>
+  <p class="mt-4 text-center font-bold text-slate-600">Tienes <span class="text-brand-600">{s.xp} XP</span></p>
 </StudentLayout>

@@ -24,7 +24,7 @@ import { EMPTY, newNonce, Podium, shuffle, TEAM_PRESETS, tallyList, type Kid, ty
 interface Lesson { id: number; title: string; pgn: string; questions?: QuestionOverrides }
 interface Props { classId: number; className: string; students: Kid[]; lessons: Lesson[]; backUrl: string; canAward: boolean }
 
-const CLASS_TEAM = { name: 'Clase', emoji: '🎓', color: '#7c3aed' };
+const CLASS_TEAM = { name: 'Clase', emoji: '🎓', color: '#2a4c9d' };
 type Mode = 'intro' | 'auto' | 'idle' | 'rolling' | 'answering' | 'resolving' | 'done';
 
 const toCg = (shapes: Shape[]): DrawShape[] => shapes.map((s) => ({ orig: s.orig as Key, dest: s.dest as Key | undefined, brush: s.brush }));
@@ -104,13 +104,13 @@ export default function LessonProjector({ classId, className, students, lessons,
 
   return (
     <div class="ck-projector min-h-dvh p-6 md:p-10">
-      <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
+      <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-brand-200">← Volver</a>
       <div class="mx-auto max-w-6xl">
         <div class="flex items-center gap-4">
           <Potroculo costume={costume} mood="wave" size={130} />
           <div>
             <h1 class="font-display text-5xl font-extrabold">🎲 Lección con dado</h1>
-            <p class="text-xl text-violet-200">{className} · El dado elige quién dice la jugada</p>
+            <p class="text-xl text-brand-200">{className} · El dado elige quién dice la jugada</p>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function LessonProjector({ classId, className, students, lessons,
                 {!solo && <button onClick={() => { sfx.whoosh(); makeTeams(teamCount); }} class="min-h-11 rounded-xl bg-white/15 px-3 font-bold">🔀 Mezclar</button>}
               </div>
             </div>
-            <p class="mt-2 min-h-7 text-lg text-violet-100">
+            <p class="mt-2 min-h-7 text-lg text-brand-100">
               {selKid ? <>👉 Toca {solo ? 'dónde' : 'un equipo o la silla'} para mover a <b>{selKid.avatar} {selKid.name}</b></> : '✋ Toca un alumno para marcarlo como ausente o cambiarlo de equipo'}
             </p>
             <div class={`mt-3 grid gap-3 ${solo ? '' : 'sm:grid-cols-2'}`}>
@@ -158,25 +158,25 @@ export default function LessonProjector({ classId, className, students, lessons,
             <h2 class="font-display text-2xl font-extrabold">2. Lección</h2>
             <div class="mt-3 max-h-56 space-y-2 overflow-auto">
               {lessons.map((l) => (
-                <label key={l.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl p-3 ${lessonId === l.id ? 'bg-violet-500/60' : 'bg-white/10'}`}>
+                <label key={l.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl p-3 ${lessonId === l.id ? 'bg-brand-500/60' : 'bg-white/10'}`}>
                   <input type="radio" name="lesson" checked={lessonId === l.id} onChange={() => setLessonId(l.id)} />
                   <span class="flex-1 font-bold">📖 {l.title}</span>
                 </label>
               ))}
               {!lessons.length && <p class="opacity-80">Crea primero una lección interactiva (PGN) en el panel de profe.</p>}
             </div>
-            <p class="mt-3 text-base text-violet-100">Sin tiempo: el que sale dice una jugada en el tablero. Si falla, sale del dado en esa pregunta y el dado rebota entre los demás.</p>
+            <p class="mt-3 text-base text-brand-100">Sin tiempo: el que sale dice una jugada en el tablero. Si falla, sale del dado en esa pregunta y el dado rebota entre los demás.</p>
             <h2 class="mt-5 font-display text-2xl font-extrabold">3. Premio ✨</h2>
             {canAward ? (
               <>
                 <div class="mt-2 flex flex-wrap gap-2">
                   {XP_BUDGETS.map((n) => <button key={n} onClick={() => setXpBudget(n)} class={pick(xpBudget === n)}>{n ? `${n} XP` : 'Sin XP'}</button>)}
                 </div>
-                <p class="mt-2 text-base text-violet-100">
+                <p class="mt-2 text-base text-brand-100">
                   {xpBudget ? `Hasta ${xpBudget} XP por alumno: 🎮 jugar · 🏆 puntos · 🎲 salir con el dado y acertar.` : 'Ronda de práctica: se guarda el resultado, pero no se da XP.'}
                 </p>
               </>
-            ) : <p class="mt-2 text-base text-violet-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
+            ) : <p class="mt-2 text-base text-brand-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
           </div>
         </div>
         <div class="mt-6 rounded-3xl bg-white/10 p-4 md:p-6"><CoachPicker compact /></div>
@@ -259,7 +259,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
       setM('auto');
       setDepth(step.depth);
       cg.current!.setAutoShapes([]);
-      flash(step.text, step.depth ? '#0284c7' : '#7c3aed', 1600);
+      flash(step.text, step.depth ? '#0284c7' : '#2a4c9d', 1600);
       sfx.pop();
       step.path.forEach((f, k) => setTimeout(() => {
         chess.current.load(f.fen);
@@ -447,7 +447,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
           </div>
         ))}
         <div class="hidden flex-1 lg:block" />
-        <p class="hidden text-center text-sm text-violet-200 lg:block">Pregunta {Math.min(qNum, questions)} de {questions}</p>
+        <p class="hidden text-center text-sm text-brand-200 lg:block">Pregunta {Math.min(qNum, questions)} de {questions}</p>
       </aside>
 
       {/* Board */}
@@ -467,7 +467,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
               else { a.setAutoShapes(toCg(lesson.introShapes)); setTimeout(() => run(0), 600); }
             }} />
         </div>
-        <p class="mt-3 min-h-14 max-w-3xl text-center text-xl font-bold text-violet-100 lg:text-2xl">{caption}</p>
+        <p class="mt-3 min-h-14 max-w-3xl text-center text-xl font-bold text-brand-100 lg:text-2xl">{caption}</p>
       </main>
 
       {/* Controls */}
@@ -477,7 +477,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
           <p class="h-7 truncate font-display text-xl font-extrabold">{rolling ? '' : picked?.name ?? ''}</p>
           {mode === 'answering' && <p class="text-sm font-bold text-amber-200">Di tu jugada y muévela en el tablero 👆</p>}
           <button onClick={throwDice} disabled={mode !== 'idle'} class="ck-btn-sm mt-1 w-full justify-center !bg-white/20 !text-white disabled:opacity-40">{diceLabel}</button>
-          {mode === 'idle' && <p class="mt-1 text-sm text-violet-200">{left === 1 ? 'Queda 1 en el dado' : `Quedan ${left} en el dado`}</p>}
+          {mode === 'idle' && <p class="mt-1 text-sm text-brand-200">{left === 1 ? 'Queda 1 en el dado' : `Quedan ${left} en el dado`}</p>}
         </div>
         {question && contenders().length > 1 && (
           <div class="flex w-full flex-wrap justify-center gap-1 rounded-3xl bg-white/10 p-2" aria-label="Quién sigue en el dado">
@@ -491,7 +491,7 @@ function LessonArena({ lesson: src, teams, setTeams, solo, tallies, setTallies, 
         )}
         {waiting && <button onClick={continueTap} class="ck-btn ck-btn-orange w-full animate-[ck-pop_.3s_ease-out]">Continuar ▶</button>}
         <button onClick={skipQuestion} disabled={mode !== 'idle' && mode !== 'answering'} class="ck-btn-sm !bg-white/15 !text-white disabled:opacity-40">👀 Ver solución</button>
-        <button onClick={() => { onEnd(Math.max(1, S.current.q + 1)); }} class="min-h-11 px-3 text-sm font-bold text-violet-200">🏁 Terminar</button>
+        <button onClick={() => { onEnd(Math.max(1, S.current.q + 1)); }} class="min-h-11 px-3 text-sm font-bold text-brand-200">🏁 Terminar</button>
       </aside>
 
       {banner && (

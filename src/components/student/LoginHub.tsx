@@ -38,10 +38,10 @@ export default function LoginHub({ error }: { error?: string | null }) {
   const card = 'ck-card flex w-full items-center gap-4 text-left transition hover:-translate-y-0.5';
 
   return (
-    <div class="flex min-h-dvh flex-col items-center bg-gradient-to-b from-violet-200 via-fuchsia-100 to-amber-100 px-4 py-8">
-      <a href="/" class="self-start text-sm font-bold text-violet-700">← Inicio</a>
+    <div class="flex min-h-dvh flex-col items-center bg-gradient-to-b from-brand-100 via-brand-50 to-gold-50 px-4 py-8">
+      <a href="/" class="self-start text-sm font-bold text-brand-700">← Inicio</a>
       <div><Potroculo size={110} mood="wave" /></div>
-      <h1 class="mt-2 text-center font-display text-4xl font-extrabold text-violet-800">¡Hola, campeón!</h1>
+      <h1 class="mt-2 text-center font-display text-4xl font-extrabold text-brand-800">¡Hola, campeón!</h1>
       <p class="mb-6 text-center font-bold text-slate-600">¿Cómo quieres entrar?</p>
       {msg && <p class="mb-4 w-full max-w-md rounded-2xl bg-rose-100 p-3 text-center font-bold text-rose-700">{msg}</p>}
 
@@ -53,7 +53,7 @@ export default function LoginHub({ error }: { error?: string | null }) {
                 <p class="mb-3 font-display text-lg font-extrabold text-slate-700">¿Eres tú?</p>
                 <div class="grid grid-cols-3 gap-3">
                   {recent.map((r) => (
-                    <a key={r.id} href={`/c/${r.code}?s=${r.id}`} class="flex flex-col items-center rounded-2xl bg-violet-50 p-3 hover:bg-violet-100">
+                    <a key={r.id} href={`/c/${r.code}?s=${r.id}`} class="flex flex-col items-center rounded-2xl bg-brand-50 p-3 hover:bg-brand-100">
                       <span class="text-5xl">{r.avatar}</span>
                       <span class="mt-1 truncate text-sm font-bold">{r.name}</span>
                     </a>
@@ -62,7 +62,7 @@ export default function LoginHub({ error }: { error?: string | null }) {
               </div>
             )}
             <button class={card} onClick={() => { sfx.tap(); setView('code'); }}>
-              <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-3xl">🔤</span>
+              <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-3xl">🔤</span>
               <span><b class="block font-display text-xl">Código de clase</b><span class="text-sm text-slate-500">Escribe el código que te dio tu profe</span></span>
             </button>
             <button class={card} onClick={() => { sfx.tap(); setView(canScan ? 'scan' : 'code'); if (!canScan) setMsg('Abre la cámara de tu móvil y apunta al código QR 📷'); }}>

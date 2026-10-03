@@ -172,6 +172,17 @@ export async function weeklyLeaderboard(db: D1Database, classId: number) {
   return results;
 }
 
+/** XP, seconds and puzzles solved per day for one student since `since` (homework, practice and projector). */
+export function dailyActivityQuery(db: D1Database, studentId: number, since: string) {
+  return db.prepare(
+    `SELECT day, SUM(xp) AS xp, SUM(secs) AS secs, SUM(solved) AS solved FROM (
+       SELECT day, xp_earned AS xp, seconds AS secs, puzzles_solved AS solved FROM attempts WHERE student_id = ? AND day >= ?
+       UNION ALL SELECT day, xp_earned, seconds, solved FROM practice_sessions WHERE student_id = ? AND day >= ? AND finished_at IS NOT NULL
+       UNION ALL SELECT day, xp_earned, 0, solved FROM projector_results WHERE student_id = ? AND day >= ?
+     ) GROUP BY day`,
+  ).bind(studentId, since, studentId, since, studentId, since);
+}
+
 export async function xpToday(db: D1Database, studentId: number): Promise<number> {
   const d = today();
   const r = await db.prepare(

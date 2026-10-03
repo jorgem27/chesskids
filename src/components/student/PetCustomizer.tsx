@@ -53,7 +53,7 @@ export function PetCustomizer({ studentXp, extraItems = [], initialBase, initial
         </div>
         
         {equipped.phrase && (
-          <div class="absolute top-4 right-4 bg-white border-2 border-violet-200 rounded-2xl p-3 shadow-lg max-w-xs animate-bounce font-display font-bold text-violet-700">
+          <div class="absolute top-4 right-4 bg-white border-2 border-brand-200 rounded-2xl p-3 shadow-lg max-w-xs animate-bounce font-display font-bold text-brand-700">
             {PET_ITEMS.find(i => i.id === equipped.phrase)?.emoji}
           </div>
         )}
@@ -61,7 +61,7 @@ export function PetCustomizer({ studentXp, extraItems = [], initialBase, initial
         <button 
           onClick={save} 
           disabled={saving}
-          class="mt-8 bg-violet-600 text-white px-8 py-3 rounded-full font-display font-bold text-lg hover:bg-violet-700 transition-colors shadow-md disabled:opacity-50"
+          class="mt-8 bg-brand-600 text-white px-8 py-3 rounded-full font-display font-bold text-lg hover:bg-brand-700 transition-colors shadow-md disabled:opacity-50"
         >
           {saving ? 'Guardando...' : 'Guardar Mascota'}
         </button>
@@ -76,7 +76,7 @@ export function PetCustomizer({ studentXp, extraItems = [], initialBase, initial
               <button 
                 key={b.id}
                 onClick={() => setBasePet(b.id)}
-                class={`flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-4xl border-2 transition-all ${basePet === b.id ? 'border-violet-500 bg-violet-50 shadow-md transform scale-110' : 'border-slate-100 hover:border-violet-300'}`}
+                class={`flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-4xl border-2 transition-all ${basePet === b.id ? 'border-brand-500 bg-brand-50 shadow-md transform scale-110' : 'border-slate-100 hover:border-brand-300'}`}
               >
                 {b.emoji}
               </button>

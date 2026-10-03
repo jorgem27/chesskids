@@ -11,7 +11,7 @@ export function PdfEditor({ value, onChange }: EditorProps<PdfContent>) {
         </label>
         <input
           type="text"
-          className="w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500 font-mono"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 font-mono"
           placeholder="/activities/pdfs/Lesson 1.pdf"
           value={value?.url ?? ''}
           onInput={(e) => onChange({ ...value, url: e.currentTarget.value })}

@@ -363,7 +363,7 @@ export function LessonEditor({ value, onChange }: EditorProps<LessonContent>) {
             <div class="flex flex-wrap gap-2">
               <button type="button" onClick={toggleAsk} aria-pressed={isAsk} title={isAsk ? 'Quitar la pregunta' : 'Preguntar aquí: el alumno debe encontrar la siguiente jugada'} class={`ck-btn-sm ring-1 ${isAsk ? 'bg-sky-600 text-white ring-sky-700' : 'ring-slate-200'}`}>❓ Pregunta</button>
               <button type="button" onClick={() => { if (!note.text) textRef.current?.focus(); else edit((g) => setNoteAt(g, cur, { text: '' }, path)); }}
-                class={`ck-btn-sm ring-1 ${note.text ? 'bg-violet-600 text-white ring-violet-700' : 'ring-slate-200'}`}>💬 Comentario</button>
+                class={`ck-btn-sm ring-1 ${note.text ? 'bg-brand-600 text-white ring-brand-700' : 'ring-slate-200'}`}>💬 Comentario</button>
               {isAsk && (
                 <button type="button" onClick={() => { setShowHint(true); setTimeout(() => hintRef.current?.focus(), 50); }}
                   class={`ck-btn-sm ring-1 ${note.hint ? 'bg-amber-500 text-white ring-amber-600' : 'ring-slate-200'}`}>💡 Pista</button>

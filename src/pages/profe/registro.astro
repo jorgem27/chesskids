@@ -2,11 +2,12 @@
 import Base from '../../layouts/Base.astro';
 if (Astro.locals.coach) return Astro.redirect('/profe');
 ---
-<Base title="Registro profes · ChessKids">
-  <div class="flex min-h-dvh items-center justify-center bg-gradient-to-br from-violet-600 to-indigo-800 p-4">
-    <form data-api="/api/auth/coach-register" data-redirect="/profe" class="ck-card w-full max-w-sm space-y-3">
-      <a href="/profe/login" class="text-sm font-bold text-violet-600">← Ya tengo cuenta</a>
-      <h1 class="font-display text-3xl font-extrabold text-violet-800">Crea tu cuenta de profe</h1>
+<Base title="Registro profes · Odisea Miranda">
+  <div class="om-night flex min-h-dvh flex-col items-center justify-center gap-5 p-4">
+    <a href="/" class="flex flex-col items-center gap-2"><img src="/brand/logo-192.webp" width="88" height="88" alt="" class="om-logo" /><span class="font-brand text-2xl font-bold om-gold-text">Odisea Miranda</span></a>
+    <form data-api="/api/auth/coach-register" data-redirect="/profe" class="ck-card w-full max-w-sm space-y-3 text-slate-800">
+      <a href="/profe/login" class="text-sm font-bold text-brand-600">← Ya tengo cuenta</a>
+      <h1 class="font-display text-3xl font-extrabold text-brand-800">Crea tu cuenta de profe</h1>
       <input name="name" required placeholder="Tu nombre" class="ck-input w-full" />
       <input name="email" type="email" required placeholder="Email" class="ck-input w-full" />
       <input name="password" type="password" required minlength="8" placeholder="Contraseña (mín. 8)" class="ck-input w-full" autocomplete="new-password" />

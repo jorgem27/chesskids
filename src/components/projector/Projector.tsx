@@ -109,13 +109,13 @@ export default function Projector({ classId, className, students, sources, backU
     );
     return (
       <div class="ck-projector min-h-dvh p-6 md:p-10">
-        <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-violet-200">← Volver</a>
+        <a href={backUrl} class="inline-flex min-h-11 items-center font-bold text-brand-200">← Volver</a>
         <div class="mx-auto max-w-6xl">
           <div class="flex items-center gap-4">
             <Potroculo costume={costume} mood="wave" size={130} />
             <div>
               <h1 class="font-display text-5xl font-extrabold">📽️ Modo proyector</h1>
-              <p class="text-xl text-violet-200">{className} · ¡Equipos contra equipos!</p>
+              <p class="text-xl text-brand-200">{className} · ¡Equipos contra equipos!</p>
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export default function Projector({ classId, className, students, sources, backU
                   <button onClick={() => { sfx.whoosh(); makeTeams(teamCount); }} class="min-h-11 rounded-xl bg-white/15 px-3 font-bold">🔀 Mezclar todo</button>
                 </div>
               </div>
-              <p class="mt-2 min-h-7 text-lg text-violet-100">
+              <p class="mt-2 min-h-7 text-lg text-brand-100">
                 {selKid ? <>👉 Toca un equipo para mover a <b>{selKid.avatar} {selKid.name}</b></> : '✋ Toca un alumno para cambiarlo de equipo'}
               </p>
               <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -161,7 +161,7 @@ export default function Projector({ classId, className, students, sources, backU
               <h2 class="font-display text-2xl font-extrabold">2. Problemas</h2>
               <div class="mt-3 max-h-56 space-y-2 overflow-auto">
                 {sources.map((s) => (
-                  <label key={s.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl p-3 ${chosen.includes(s.id) ? 'bg-violet-500/60' : 'bg-white/10'}`}>
+                  <label key={s.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl p-3 ${chosen.includes(s.id) ? 'bg-brand-500/60' : 'bg-white/10'}`}>
                     <input type="checkbox" checked={chosen.includes(s.id)} onChange={() => setChosen(chosen.includes(s.id) ? chosen.filter((x) => x !== s.id) : [...chosen, s.id])} />
                     <span class="flex-1 font-bold">{s.type === 'puzzle-blitz' ? '⚡' : '🧩'} {s.title}</span>
                     <span class="text-sm opacity-80">{s.puzzles.length}</span>
@@ -186,13 +186,13 @@ export default function Projector({ classId, className, students, sources, backU
                   <div class="mt-2 flex flex-wrap gap-2">
                     {XP_BUDGETS.map((n) => <button key={n} onClick={() => setXpBudget(n)} class={`min-h-11 rounded-xl px-4 py-2 font-black ${xpBudget === n ? 'bg-amber-400 text-amber-950' : 'bg-white/15'}`}>{n ? `${n} XP` : 'Sin XP'}</button>)}
                   </div>
-                  <p class="mt-2 text-base text-violet-100">
+                  <p class="mt-2 text-base text-brand-100">
                     {xpBudget
                       ? `Hasta ${xpBudget} XP por alumno: 🎮 jugar (30 %) · 🏆 puntos del equipo (40 %) · 🎲 salir con el dado y acertar (30 %).`
                       : 'Ronda de práctica: se guarda el resultado, pero no se da XP.'}
                   </p>
                 </>
-              ) : <p class="mt-2 text-base text-violet-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
+              ) : <p class="mt-2 text-base text-brand-100">Solo el profe responsable (o con permiso para gestionar alumnos) puede dar XP. Esta ronda es de práctica.</p>}
             </div>
           </div>
           <div class="mt-6 rounded-3xl bg-white/10 p-4 md:p-6"><CoachPicker compact /></div>
@@ -427,7 +427,7 @@ function Arena({ teams, setTeams, tallies, setTallies, pool, turnSeconds, onEnd 
           </div>
         ))}
         <div class="hidden flex-1 lg:block" />
-        <p class="hidden text-center text-sm text-violet-200 lg:block">Problema {pIdx + 1} de {pool.length}</p>
+        <p class="hidden text-center text-sm text-brand-200 lg:block">Problema {pIdx + 1} de {pool.length}</p>
       </aside>
 
       {/* Board */}
@@ -457,7 +457,7 @@ function Arena({ teams, setTeams, tallies, setTallies, pool, turnSeconds, onEnd 
         </div>
         <button onClick={() => { if (!s.locked) { s.locked = true; clock(false); flash('👀 Solución', '#64748b'); reveal(); } }} class="ck-btn-sm !bg-white/15 !text-white">👀 Solución</button>
         <button onClick={nextPuzzle} class="ck-btn ck-btn-orange w-full">Siguiente ▶</button>
-        <button onClick={() => { clock(false); onEnd(S.current.p + 1); }} class="min-h-11 px-3 text-sm font-bold text-violet-200">🏁 Terminar</button>
+        <button onClick={() => { clock(false); onEnd(S.current.p + 1); }} class="min-h-11 px-3 text-sm font-bold text-brand-200">🏁 Terminar</button>
       </aside>
 
       {banner && (
@@ -555,7 +555,7 @@ export function Podium({ teams, tallies, budget, canAward, classId, run, played,
       {kids.length > 0 && (
         <div class="mt-8 w-full max-w-6xl">
           <h2 class="text-center font-display text-3xl font-extrabold">📋 ¿Qué hizo cada uno?</h2>
-          <p class="mt-1 text-center text-lg text-violet-100">⭐ puntos para su equipo (los que no se ganaron con el dado se reparten entre todos) · 🎲 veces que salió con el dado</p>
+          <p class="mt-1 text-center text-lg text-brand-100">⭐ puntos para su equipo (los que no se ganaron con el dado se reparten entre todos) · 🎲 veces que salió con el dado</p>
           <div class="mt-4 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
             {sorted.map((t) => (
               <div key={t.name} class="rounded-3xl p-4" style={{ background: `${t.color}33`, border: `3px solid ${t.color}` }}>

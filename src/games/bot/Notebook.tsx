@@ -82,7 +82,7 @@ export function Notebook({ position, onDone, doneLabel = '¡Listo, a jugar! ▶'
         <div class="absolute bottom-0 left-9 top-0 w-0.5 bg-rose-300/70" aria-hidden="true" />
         <span class="absolute -top-4 right-5 rotate-6 rounded-lg bg-yellow-300 px-3 py-1 text-sm font-black text-amber-900 shadow" aria-hidden="true">📓 Mi cuaderno</span>
 
-        <h3 class="mb-2 font-display text-xl font-extrabold text-violet-700">{position.title?.trim() || 'Cómo dar jaque mate'}</h3>
+        <h3 class="mb-2 font-display text-xl font-extrabold text-brand-700">{position.title?.trim() || 'Cómo dar jaque mate'}</h3>
 
         <ol class="space-y-2" style={{ backgroundImage: PAPER }}>
           {steps.map((s, i) => {
@@ -90,9 +90,9 @@ export function Notebook({ position, onDone, doneLabel = '¡Listo, a jugar! ▶'
             return (
               <li key={i}>
                 <button type="button" onClick={() => go(i)} disabled={i > cur + 1}
-                  class={`flex w-full items-start gap-2 rounded-2xl px-2 py-1.5 text-left transition ${i === cur ? 'bg-white/90 shadow-md ring-2 ring-violet-300' : shown ? 'opacity-70' : 'opacity-30'}`}
+                  class={`flex w-full items-start gap-2 rounded-2xl px-2 py-1.5 text-left transition ${i === cur ? 'bg-white/90 shadow-md ring-2 ring-brand-300' : shown ? 'opacity-70' : 'opacity-30'}`}
                   style={i === cur ? 'animation: ck-pop .3s ease-out' : ''}>
-                  <span class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base font-black ${i < cur ? 'bg-emerald-400 text-white' : 'bg-violet-500 text-white'}`}>
+                  <span class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base font-black ${i < cur ? 'bg-emerald-400 text-white' : 'bg-brand-500 text-white'}`}>
                     {i < cur ? '✓' : i + 1}
                   </span>
                   <span class="min-w-0 flex-1 text-[1.02rem] font-bold leading-snug text-slate-700">

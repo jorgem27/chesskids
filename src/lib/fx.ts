@@ -1,7 +1,7 @@
 // Visual celebrations + Spanish voice-over. Client only.
 import confetti from 'canvas-confetti';
 
-const COLORS = ['#a855f7', '#f59e0b', '#22c55e', '#0ea5e9', '#ef4444', '#facc15'];
+const COLORS = ['#2a4c9d', '#e2ae34', '#22c55e', '#5e84cf', '#f4dd96', '#facc15'];
 // canvas-confetti skips the animation for users who ask for reduced motion.
 const calm = { disableForReducedMotion: true };
 

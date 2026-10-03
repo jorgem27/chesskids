@@ -1,7 +1,7 @@
 ---
 import CoachLayout from '../../../../../layouts/CoachLayout.astro';
 import { GAME_META } from '../../../../../games/meta';
-import { classPerm, today, type ClassRow, type StudentRow } from '../../../../../lib/db';
+import { classPerm, dailyActivityQuery, today, type ClassRow, type StudentRow } from '../../../../../lib/db';
 import { addDays, relativeDay, shortDate } from '../../../../../lib/dates';
 import { themeStats } from '../../../../../lib/insights';
 import { countPendingMistakes, REVIEW_DAYS } from '../../../../../lib/practice';
@@ -24,13 +24,7 @@ const t = today();
 const WEEKS = 8;
 const since = addDays(weekStart(new Date(t + 'T12:00:00Z')), -7 * (WEEKS - 1));
 const [daily, recent, stickers, camps, themesRes, tourneys] = await db.batch<any>([
-  db.prepare(
-    `SELECT day, SUM(xp) AS xp, SUM(secs) AS secs, SUM(solved) AS solved FROM (
-       SELECT day, xp_earned AS xp, seconds AS secs, puzzles_solved AS solved FROM attempts WHERE student_id = ? AND day >= ?
-       UNION ALL SELECT day, xp_earned, seconds, solved FROM practice_sessions WHERE student_id = ? AND day >= ? AND finished_at IS NOT NULL
-       UNION ALL SELECT day, xp_earned, 0, solved FROM projector_results WHERE student_id = ? AND day >= ?
-     ) GROUP BY day`,
-  ).bind(studentId, since, studentId, since, studentId, since),
+  dailyActivityQuery(db, studentId, since),
   db.prepare(
     `SELECT at.activity_id, a.title, a.type, at.stars, at.mistakes, at.seconds, at.xp_earned, at.day, at.assignment_id
      FROM attempts at JOIN activities a ON a.id = at.activity_id WHERE at.student_id = ? ORDER BY at.id DESC LIMIT 25`,
@@ -68,16 +62,16 @@ const fmtTime = (x: number) => (x >= 3600 ? `${Math.floor(x / 3600)}h ${Math.flo
 const tour = tourneys.results[0] as { n: number; solved: number };
 ---
 <CoachLayout title={`${s.display_name} · ${cls.name}`}>
-  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-violet-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
+  <a href={`/profe/clase/${classId}?tab=progreso`} class="text-sm font-bold text-brand-600 hover:underline">← {cls.emoji} {cls.name} · Progreso</a>
 
   <section class="ck-card mt-3 flex flex-wrap items-center gap-5">
-    <span class="flex h-20 w-20 items-center justify-center rounded-full bg-violet-100 text-6xl">{s.avatar}</span>
+    <span class="flex h-20 w-20 items-center justify-center rounded-full bg-brand-100 text-6xl">{s.avatar}</span>
     <div class="min-w-48 flex-1">
       <h1 class="font-display text-3xl font-extrabold">{s.display_name}</h1>
       <p class="text-sm text-slate-500">{AGE_GROUPS[s.age_group as AgeGroup]?.emoji} {AGE_GROUPS[s.age_group as AgeGroup]?.label} · última vez {relativeDay(s.last_active_day, t)}</p>
     </div>
     <dl class="grid grid-cols-3 gap-3 text-center sm:grid-cols-6">
-      <div><dt class="text-xs text-slate-500">Nivel</dt><dd class="font-display text-2xl font-extrabold text-violet-700">{level}</dd></div>
+      <div><dt class="text-xs text-slate-500">Nivel</dt><dd class="font-display text-2xl font-extrabold text-brand-700">{level}</dd></div>
       <div><dt class="text-xs text-slate-500">XP</dt><dd class="font-display text-2xl font-extrabold">{s.xp}</dd></div>
       <div><dt class="text-xs text-slate-500">Racha</dt><dd class="font-display text-2xl font-extrabold text-orange-500">🔥 {streak}</dd><dd class="text-xs text-slate-500">mejor {s.best_streak}</dd></div>
       <div><dt class="text-xs text-slate-500">Problemas</dt><dd class="font-display text-2xl font-extrabold">{s.puzzles_solved}</dd></div>
@@ -94,7 +88,7 @@ const tour = tourneys.results[0] as { n: number; solved: number };
           {weeks.map((w) => (
             <div class="flex flex-1 flex-col items-center gap-1" title={`Semana del ${shortDate(w.start)}: ${w.xp} XP, ${w.solved} problemas, ${fmtTime(w.secs)}, ${w.days} días`}>
               <span class="text-xs font-bold text-slate-600 tabular-nums">{w.xp || ''}</span>
-              <div class={`w-full rounded-t-lg ${w.xp ? 'bg-gradient-to-t from-violet-500 to-fuchsia-400' : 'bg-slate-100'}`} style={`height:${Math.max(4, (w.xp / maxXp) * 120)}px`}></div>
+              <div class={`w-full rounded-t-lg ${w.xp ? 'bg-gradient-to-t from-brand-600 to-brand-400' : 'bg-slate-100'}`} style={`height:${Math.max(4, (w.xp / maxXp) * 120)}px`}></div>
               <span class="text-xs text-slate-500">{shortDate(w.start)}</span>
             </div>
           ))}

@@ -173,7 +173,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
         <p class="ck-rise mt-4 rounded-full bg-white/20 px-4 py-1 font-bold uppercase tracking-widest" style="animation-delay:.1s">{game.name}</p>
         <h1 class="ck-rise mt-3 max-w-2xl text-center text-4xl font-extrabold drop-shadow md:text-6xl" style="animation-delay:.2s">{activity.title}</h1>
         <p class="ck-rise mt-3 max-w-md text-center text-lg font-bold opacity-90" style="animation-delay:.3s">{game.tagline}</p>
-        <button onClick={start} class="ck-btn ck-rise mt-10 bg-white px-14 py-5 text-2xl text-violet-700" style="animation-delay:.45s; box-shadow: 0 6px 0 rgb(0 0 0 / .2)">
+        <button onClick={start} class="ck-btn ck-rise mt-10 bg-white px-14 py-5 text-2xl text-brand-700" style="animation-delay:.45s; box-shadow: 0 6px 0 rgb(0 0 0 / .2)">
           ¡A jugar! ▶
         </button>
       </div>
@@ -199,7 +199,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
   // ---------- Playing ----------
   const Player = game.Player;
   return (
-    <div class={`flex min-h-dvh flex-col ${board === 'space' ? 'ck-space-bg' : 'bg-gradient-to-b from-violet-50 to-fuchsia-50'}`}>
+    <div class={`flex min-h-dvh flex-col ${board === 'space' ? 'ck-space-bg' : 'bg-gradient-to-b from-brand-50 to-gold-50'}`}>
       {/* Top bar */}
       <header class="sticky top-0 z-20 flex items-center gap-3 px-3 py-3 md:px-6">
         <a href={exitUrl} onClick={(e) => { if (!preview && !confirm('¿Salir? Perderás el progreso de esta actividad.')) e.preventDefault(); }}
@@ -224,7 +224,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
             <Potroculo costume={costume} mood={mood} size={ageGroup === 'peque' ? 96 : 76} class="md:!w-40 md:!h-auto" />
           </div>
           {bubble && (
-            <div key={bubble} class="ck-rise relative mb-3 flex-1 rounded-2xl border-2 border-violet-200 bg-white px-4 py-3 font-bold text-slate-700 shadow-sm md:mb-0 md:w-full md:text-lg">
+            <div key={bubble} class="ck-rise relative mb-3 flex-1 rounded-2xl border-2 border-brand-200 bg-white px-4 py-3 font-bold text-slate-700 shadow-sm md:mb-0 md:w-full md:text-lg">
               {bubble}
               <button onClick={() => speak(bubble)} class="ml-2 align-middle text-base opacity-60 hover:opacity-100" title="Escuchar">🔈</button>
             </div>
@@ -237,7 +237,7 @@ export default function GamePlayer({ activity, assignmentId = null, campaignNode
 
       {phase === 'saving' && (
         <div class="fixed inset-0 z-40 flex items-center justify-center bg-white/90">
-          <div class="text-center"><Potroculo costume={costume} mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-violet-700">Contando tus puntos…</p></div>
+          <div class="text-center"><Potroculo costume={costume} mood="run" size={120} class="mx-auto" /><p class="mt-3 font-display text-2xl font-extrabold text-brand-700">Contando tus puntos…</p></div>
         </div>
       )}
 

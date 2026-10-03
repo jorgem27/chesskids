@@ -62,7 +62,7 @@ export default function ActivityEditor({ id, clubId, type, visibility = 'private
       <div class="flex flex-wrap items-center gap-3">
         <a href="/profe/actividades" class="ck-btn-sm">←</a>
         <span class={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${game.gradient} text-2xl`}>{game.emoji}</span>
-        <h1 class="flex-1 font-display text-2xl font-extrabold">{id ? 'Editar' : 'Nueva'}: {game.name} <span class={`ml-2 align-middle rounded-full px-3 py-1 text-xs font-bold ${vis === 'public' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'}`}>{vis === 'public' ? '🌍 Pública' : '🔒 Privada'}</span></h1>
+        <h1 class="flex-1 font-display text-2xl font-extrabold">{id ? 'Editar' : 'Nueva'}: {game.name} <span class={`ml-2 align-middle rounded-full px-3 py-1 text-xs font-bold ${vis === 'public' ? 'bg-sky-100 text-sky-700' : 'bg-brand-100 text-brand-700'}`}>{vis === 'public' ? '🌍 Pública' : '🔒 Privada'}</span></h1>
         <button class="ck-btn-sm" disabled={errors.length > 0} onClick={() => setPreview(true)}>▶ Probar</button>
         {id && !willFork && <button class="ck-btn-sm text-rose-600" onClick={remove}>🗑 Borrar</button>}
         <button class="ck-btn ck-btn-primary" disabled={saving || errors.length > 0 || !title.trim()} onClick={save}>{saving ? 'Guardando…' : willFork ? '💾 Guardar mi copia' : '💾 Guardar'}</button>
@@ -75,7 +75,7 @@ export default function ActivityEditor({ id, clubId, type, visibility = 'private
       {isAdmin && !id && (
         <div class="ck-card flex flex-wrap items-center gap-3">
           <span class="font-bold">¿Quién la ve?</span>
-          <button type="button" onClick={() => setVis('private')} class={`rounded-full px-4 py-2 font-bold ${vis === 'private' ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>🔒 Privada (solo yo)</button>
+          <button type="button" onClick={() => setVis('private')} class={`rounded-full px-4 py-2 font-bold ${vis === 'private' ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>🔒 Privada (solo yo)</button>
           <button type="button" onClick={() => setVis('public')} class={`rounded-full px-4 py-2 font-bold ${vis === 'public' ? 'bg-sky-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>🌍 Pública (todo el club)</button>
         </div>
       )}

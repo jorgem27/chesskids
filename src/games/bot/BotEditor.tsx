@@ -60,13 +60,13 @@ function SetupBoard({ p, onChange }: { p: BotPosition; onChange: (fen: string) =
 
   return (
     <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div class="grid aspect-square w-full max-w-md grid-cols-8 grid-rows-8 overflow-hidden rounded-2xl border-4 border-violet-700/30 select-none">
+      <div class="grid aspect-square w-full max-w-md grid-cols-8 grid-rows-8 overflow-hidden rounded-2xl border-4 border-brand-700/30 select-none">
         {grid.map((row, r) => row.map((c, f) => (
           <button type="button" key={`${r}${f}`} onClick={() => put(r, f)}
             class={`relative flex items-center justify-center text-[min(7vw,2.6rem)] leading-none hover:brightness-95 ${(r + f) % 2 === 0 ? 'bg-[#f0e6ff]' : 'bg-[#a78bdb]'}`}>
             {c && <Piece code={c} />}
-            {r === 7 && <span class="absolute bottom-0 right-1 text-[9px] text-violet-900/50">{'abcdefgh'[f]}</span>}
-            {f === 0 && <span class="absolute left-0.5 top-0 text-[9px] text-violet-900/50">{8 - r}</span>}
+            {r === 7 && <span class="absolute bottom-0 right-1 text-[9px] text-brand-900/50">{'abcdefgh'[f]}</span>}
+            {f === 0 && <span class="absolute left-0.5 top-0 text-[9px] text-brand-900/50">{8 - r}</span>}
           </button>
         )))}
       </div>
@@ -76,9 +76,9 @@ function SetupBoard({ p, onChange }: { p: BotPosition; onChange: (fen: string) =
           <div class="flex flex-wrap gap-1.5">
             {PALETTE.map((code) => (
               <button type="button" key={code} onClick={() => setTool(code)}
-                class={`h-11 w-11 rounded-xl bg-slate-200 text-3xl ${tool === code ? 'ring-4 ring-violet-500' : ''}`}><Piece code={code} /></button>
+                class={`h-11 w-11 rounded-xl bg-slate-200 text-3xl ${tool === code ? 'ring-4 ring-brand-500' : ''}`}><Piece code={code} /></button>
             ))}
-            <button type="button" onClick={() => setTool('')} class={`h-11 rounded-xl bg-slate-100 px-3 font-bold ${tool === '' ? 'ring-4 ring-violet-500' : ''}`}>🧽 Borrar</button>
+            <button type="button" onClick={() => setTool('')} class={`h-11 rounded-xl bg-slate-100 px-3 font-bold ${tool === '' ? 'ring-4 ring-brand-500' : ''}`}>🧽 Borrar</button>
           </div>
         </div>
         <div>
@@ -86,7 +86,7 @@ function SetupBoard({ p, onChange }: { p: BotPosition; onChange: (fen: string) =
           <div class="flex gap-2">
             {(['w', 'b'] as const).map((t) => (
               <button type="button" key={t} onClick={() => onChange(fenFromGrid(grid, t))}
-                class={`ck-btn-sm ${turn === t ? '!bg-violet-600 !text-white' : ''}`}>{t === 'w' ? '⚪ Blancas' : '⚫ Negras'}</button>
+                class={`ck-btn-sm ${turn === t ? '!bg-brand-600 !text-white' : ''}`}>{t === 'w' ? '⚪ Blancas' : '⚫ Negras'}</button>
             ))}
           </div>
           <p class="mt-1 text-xs text-slate-500">El bot juega con el otro color.</p>
@@ -142,7 +142,7 @@ function StepRecorder({ p, sel, onChange }: { p: BotPosition; sel: number; onCha
     <div class="w-full max-w-sm space-y-2">
       <Board config={{ fen: p.fen, orientation, movable: { events: { after: onMove } } }} onReady={(a) => { cg.current = a; a.set({ movable: { events: { after: onMove } } }); refresh(); }} />
       <div class="flex flex-wrap items-center gap-2 text-sm">
-        <span class="rounded-full bg-violet-100 px-3 py-1 font-bold text-violet-700">🎬 Paso {sel + 1}: {moves.length} jugada{moves.length === 1 ? '' : 's'}</span>
+        <span class="rounded-full bg-brand-100 px-3 py-1 font-bold text-brand-700">🎬 Paso {sel + 1}: {moves.length} jugada{moves.length === 1 ? '' : 's'}</span>
         <button type="button" class="ck-btn-sm" disabled={!moves.length} onClick={() => setMoves(moves.slice(0, -1))}>↩ Quitar última</button>
         <button type="button" class="ck-btn-sm" disabled={!moves.length} onClick={() => setMoves([])}>🗑 Sin jugadas</button>
       </div>
@@ -168,8 +168,8 @@ function ExplainEditor({ p, onChange }: { p: BotPosition; onChange: (p: BotPosit
         <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
           <div class="space-y-2">
             {steps.map((st, i) => (
-              <div key={i} class={`flex items-start gap-2 rounded-2xl border-2 p-2 ${i === s ? 'border-violet-400 bg-violet-50' : 'border-slate-200'}`}>
-                <button type="button" onClick={() => setSel(i)} class={`h-9 w-9 shrink-0 rounded-full font-black ${i === s ? 'bg-violet-600 text-white' : 'bg-slate-200'}`}>{i + 1}</button>
+              <div key={i} class={`flex items-start gap-2 rounded-2xl border-2 p-2 ${i === s ? 'border-brand-400 bg-brand-50' : 'border-slate-200'}`}>
+                <button type="button" onClick={() => setSel(i)} class={`h-9 w-9 shrink-0 rounded-full font-black ${i === s ? 'bg-brand-600 text-white' : 'bg-slate-200'}`}>{i + 1}</button>
                 <textarea rows={2} class="min-w-0 flex-1 rounded-xl border-2 border-slate-200 px-3 py-2 font-bold" placeholder="Escribe el paso, p. ej. «Lleva tu rey hacia el rey rival»"
                   value={st.text} onFocus={() => setSel(i)} onInput={(e) => setStep(i, { text: (e.target as HTMLTextAreaElement).value })} />
                 <span class="mt-2 text-xs font-bold text-slate-500" title="Jugadas grabadas">🎬{st.moves?.length ?? 0}</span>
@@ -185,7 +185,7 @@ function ExplainEditor({ p, onChange }: { p: BotPosition; onChange: (p: BotPosit
         </div>
       )}
       {preview && (
-        <div class="fixed inset-0 z-[70] overflow-auto bg-gradient-to-br from-sky-100 to-violet-100 p-4">
+        <div class="fixed inset-0 z-[70] overflow-auto bg-gradient-to-br from-sky-100 to-brand-100 p-4">
           <button type="button" onClick={() => setPreview(false)} class="fixed right-4 top-4 z-[80] rounded-full bg-slate-900 px-4 py-2 font-bold text-white shadow-lg">✕ Cerrar</button>
           <div class="pt-14"><Notebook position={p} onDone={() => setPreview(false)} doneLabel="✔ Terminar" /></div>
         </div>
@@ -220,7 +220,7 @@ export function BotEditor({ value, onChange }: EditorProps<BotContent>) {
       <div class="flex flex-wrap items-center gap-2">
         {positions.map((_, k) => (
           <button type="button" key={k} onClick={() => setSel(k)}
-            class={`h-11 min-w-11 rounded-xl px-2 text-lg font-black ${i === k ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-800'}`}>{k + 1}</button>
+            class={`h-11 min-w-11 rounded-xl px-2 text-lg font-black ${i === k ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-800'}`}>{k + 1}</button>
         ))}
         <button type="button" class="ck-btn-sm" onClick={() => { onChange({ positions: [...positions, { ...newPosition(p?.fen), steps: [], explain: false }] }); setSel(positions.length); }}>＋ Posición</button>
         {positions.length > 1 && (
@@ -247,7 +247,7 @@ export function BotEditor({ value, onChange }: EditorProps<BotContent>) {
               <p class="mb-1 text-sm font-bold">Nivel del bot (Stockfish)</p>
               <div class="flex flex-wrap gap-2">
                 {(Object.keys(LEVELS) as BotLevel[]).map((l) => (
-                  <button type="button" key={l} onClick={() => set(i, { ...p, level: l })} class={`ck-btn-sm ${p.level === l ? '!bg-violet-600 !text-white' : ''}`}>{LEVELS[l].emoji} {LEVELS[l].label}</button>
+                  <button type="button" key={l} onClick={() => set(i, { ...p, level: l })} class={`ck-btn-sm ${p.level === l ? '!bg-brand-600 !text-white' : ''}`}>{LEVELS[l].emoji} {LEVELS[l].label}</button>
                 ))}
               </div>
               <p class="mt-1 text-xs text-slate-500">Para practicar finales de mate, «Difícil» hace que el bot se defienda lo mejor posible. Responde en una fracción de segundo.</p>

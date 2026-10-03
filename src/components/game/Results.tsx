@@ -87,7 +87,7 @@ export function Results({ result, reward, preview, error, queued = false, exitUr
   const title = stars === 3 ? '¡PERFECTO!' : stars === 2 ? '¡Muy bien!' : stars === 1 ? '¡Conseguido!' : '¡Buen intento!';
 
   return (
-    <div class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-violet-600 via-fuchsia-500 to-amber-400 px-5 py-10 text-white">
+    <div class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-brand-950 via-brand-800 to-brand-600 px-5 py-10 text-white">
       <div class="pointer-events-none absolute inset-0 opacity-20" style="background: repeating-conic-gradient(from 0deg at 50% 40%, #fff 0 10deg, transparent 10deg 20deg); animation: ck-spin-slow 40s linear infinite" />
       <div class="relative flex flex-col items-center">
         <div><Potroculo costume={costume} mood="party" size={130} /></div>
@@ -109,9 +109,9 @@ export function Results({ result, reward, preview, error, queued = false, exitUr
               <p class="text-center font-bold text-slate-700">{error}</p>
             ) : reward && (
               <>
-                <p class="text-center font-display text-5xl font-extrabold text-violet-600 tabular-nums">+{xpShown} XP</p>
+                <p class="text-center font-display text-5xl font-extrabold text-brand-600 tabular-nums">+{xpShown} XP</p>
                 <div class="mt-3 flex flex-wrap justify-center gap-2 text-sm font-bold">
-                  {reward.xp.performance > 0 && <span class="rounded-full bg-violet-100 px-3 py-1 text-violet-700">🎯 Aciertos +{reward.xp.performance}</span>}
+                  {reward.xp.performance > 0 && <span class="rounded-full bg-brand-100 px-3 py-1 text-brand-700">🎯 Aciertos +{reward.xp.performance}</span>}
                   {reward.xp.stars > 0 && <span class="rounded-full bg-amber-100 px-3 py-1 text-amber-700">⭐ Estrellas +{reward.xp.stars}</span>}
                   {reward.xp.time > 0 && <span class="rounded-full bg-sky-100 px-3 py-1 text-sky-700">⏰ Tiempo +{reward.xp.time}</span>}
                   {reward.xp.homework > 0 && <span class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">🎒 Deberes +{reward.xp.homework}</span>}
@@ -133,10 +133,10 @@ export function Results({ result, reward, preview, error, queued = false, exitUr
                     <p class="font-display text-2xl font-extrabold text-orange-600">{reward.streak.value} {reward.streak.value === 1 ? 'día' : 'días'}</p>
                     <p class="text-xs font-bold text-orange-500">{reward.streak.extended ? '¡Racha ampliada!' : 'Racha'}</p>
                   </div>
-                  <div class="rounded-2xl bg-violet-50 p-3">
+                  <div class="rounded-2xl bg-brand-50 p-3">
                     <p class="text-3xl">🏅</p>
-                    <p class="font-display text-2xl font-extrabold text-violet-600">Nivel {reward.after.level}</p>
-                    <p class="text-xs font-bold text-violet-500">{reward.after.xp} XP en total</p>
+                    <p class="font-display text-2xl font-extrabold text-brand-600">Nivel {reward.after.level}</p>
+                    <p class="text-xs font-bold text-brand-500">{reward.after.xp} XP en total</p>
                   </div>
                 </div>
               </>
@@ -146,7 +146,7 @@ export function Results({ result, reward, preview, error, queued = false, exitUr
 
         {ready && !current && (
           <div class="ck-rise mt-8 flex flex-wrap justify-center gap-4">
-            <button onClick={() => { sfx.tap(); onReplay(); }} class="ck-btn bg-white/90 text-violet-700">↺ Repetir</button>
+            <button onClick={() => { sfx.tap(); onReplay(); }} class="ck-btn bg-white/90 text-brand-700">↺ Repetir</button>
             <a href={exitUrl} onClick={() => sfx.tap()} class="ck-btn ck-btn-green px-10">Seguir ▶</a>
           </div>
         )}
@@ -157,8 +157,8 @@ export function Results({ result, reward, preview, error, queued = false, exitUr
           <div key={JSON.stringify(current)} class="w-full max-w-sm rounded-[2rem] bg-white p-8 text-center text-slate-800 shadow-2xl" style="animation: ck-pop .5s cubic-bezier(.2,.9,.3,1.4) both">
             {current.kind === 'level' && (
               <>
-                <p class="text-sm font-black uppercase tracking-widest text-violet-500">¡Subes de nivel!</p>
-                <div class="relative mx-auto my-4 flex h-36 w-36 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 font-display text-7xl font-extrabold text-white shadow-[0_8px_0_#5b21b6]">{current.level}</div>
+                <p class="text-sm font-black uppercase tracking-widest text-brand-500">¡Subes de nivel!</p>
+                <div class="relative mx-auto my-4 flex h-36 w-36 items-center justify-center rounded-full bg-gradient-to-br from-gold-300 to-gold-500 font-display text-7xl font-extrabold text-brand-950 shadow-[0_8px_0_#855616]">{current.level}</div>
                 <p class="font-display text-3xl font-extrabold">Nivel {current.level}</p>
               </>
             )}

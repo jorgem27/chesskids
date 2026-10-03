@@ -45,12 +45,12 @@ export default function AvatarPinLogin({ code, className, classEmoji, students, 
 
   if (!kid) {
     return (
-      <div class="min-h-dvh bg-gradient-to-b from-sky-200 via-violet-100 to-fuchsia-100 px-4 py-6">
+      <div class="min-h-dvh bg-gradient-to-b from-brand-100 via-brand-50 to-gold-50 px-4 py-6">
         <div class="mx-auto max-w-4xl">
-          <a href="/entrar" class="text-sm font-bold text-violet-700">← Volver</a>
+          <a href="/entrar" class="text-sm font-bold text-brand-700">← Volver</a>
           <div class="mt-2 text-center">
             <span class="text-5xl">{classEmoji}</span>
-            <h1 class="font-display text-4xl font-extrabold text-violet-800">{className}</h1>
+            <h1 class="font-display text-4xl font-extrabold text-brand-800">{className}</h1>
             <p class="font-bold text-slate-600">¿Quién eres? Toca tu animal</p>
           </div>
           <div class="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
@@ -69,15 +69,15 @@ export default function AvatarPinLogin({ code, className, classEmoji, students, 
   }
 
   return (
-    <div class="flex min-h-dvh flex-col items-center bg-gradient-to-b from-sky-200 via-violet-100 to-fuchsia-100 px-4 py-6">
-      <button onClick={() => { setKid(null); setPin([]); setMsg(''); }} class="self-start text-sm font-bold text-violet-700">← No soy yo</button>
+    <div class="flex min-h-dvh flex-col items-center bg-gradient-to-b from-brand-100 via-brand-50 to-gold-50 px-4 py-6">
+      <button onClick={() => { setKid(null); setPin([]); setMsg(''); }} class="self-start text-sm font-bold text-brand-700">← No soy yo</button>
       <div class={`mt-2 text-8xl ${ok ? 'animate-bounce' : 'ck-float'}`}>{kid.avatar}</div>
-      <h1 class="font-display text-4xl font-extrabold text-violet-800">{ok ? `¡Hola, ${kid.name}!` : kid.name}</h1>
+      <h1 class="font-display text-4xl font-extrabold text-brand-800">{ok ? `¡Hola, ${kid.name}!` : kid.name}</h1>
       <p class="mb-4 font-bold text-slate-600">{ok ? '¡Vamos allá! 🚀' : 'Toca tus 3 dibujos secretos'}</p>
 
       <div class={`mb-5 flex gap-3 ${shake ? 'ck-shake' : ''}`}>
         {[0, 1, 2].map((i) => (
-          <div key={i} class={`flex h-20 w-20 items-center justify-center rounded-2xl border-4 text-5xl ${pin[i] ? 'border-violet-500 bg-white' : 'border-dashed border-violet-300 bg-white/50'} ${ok ? 'border-emerald-500 bg-emerald-50' : ''}`}>
+          <div key={i} class={`flex h-20 w-20 items-center justify-center rounded-2xl border-4 text-5xl ${pin[i] ? 'border-brand-500 bg-white' : 'border-dashed border-brand-300 bg-white/50'} ${ok ? 'border-emerald-500 bg-emerald-50' : ''}`}>
             {pin[i] && <span style="animation: ck-pop .25s ease-out">{pin[i]}</span>}
           </div>
         ))}

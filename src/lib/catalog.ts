@@ -22,9 +22,10 @@ export const AGE_GROUPS: Record<AgeGroup, { label: string; range: string; emoji:
 };
 
 /** Legacy named class colors (stored before the free color picker) mapped to hex. */
-const LEGACY_COLORS: Record<string, string> = { violet: '#8b5cf6', sky: '#0ea5e9', emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e', orange: '#f97316' };
+// 'violet' (the old default, still the column default) now renders as the brand blue.
+const LEGACY_COLORS: Record<string, string> = { violet: '#2a4c9d', sky: '#0ea5e9', emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e', orange: '#f97316' };
 export const DEFAULT_CLASS_COLOR = LEGACY_COLORS.violet;
-export const CLASS_COLOR_PRESETS = Object.values(LEGACY_COLORS);
+export const CLASS_COLOR_PRESETS = [DEFAULT_CLASS_COLOR, '#c9921f', LEGACY_COLORS.sky, LEGACY_COLORS.emerald, LEGACY_COLORS.rose, LEGACY_COLORS.orange];
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Returns a valid #rrggbb for a stored class color (hex or legacy name). */

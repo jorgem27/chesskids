@@ -41,7 +41,7 @@ if (visible.length) {
 }
 ---
 <CoachLayout title={campaign.title} wide>
-  <a href="/profe/campanas" class="text-sm font-bold text-violet-600 hover:underline">← Volver a Campañas</a>
+  <a href="/profe/campanas" class="text-sm font-bold text-brand-600 hover:underline">← Volver a Campañas</a>
   <h1 class="mb-5 mt-2 font-display text-3xl font-extrabold text-slate-800">{campaign.emoji} {campaign.title}</h1>
   <CampaignEditor client:load clubId={campaign.club_id} canEdit={canEdit}
     campaign={{ id: campaign.id, title: campaign.title, description: campaign.description, reward_type: campaign.reward_type, theme: campaign.theme, emoji: campaign.emoji }}

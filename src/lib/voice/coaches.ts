@@ -75,7 +75,7 @@ export const COACHES: readonly Coach[] = [
   },
   {
     id: 'robo', name: 'Robot', emoji: '🤖', tagline: 'Bip bup, modo ajedrez',
-    gradient: 'from-cyan-400 to-violet-600', image: '/potroculo/robo.webp',
+    gradient: 'from-cyan-400 to-brand-600', image: '/potroculo/robo.webp',
     tts: { engine: 'edge', voice: 'es-MX-JorgeNeural', rate: '+0%', pitch: '-5Hz', filter: ROBOT },
     web: { pitch: 0.6, rate: 0.95, male: true },
     intro: ['Bip, bup. Potróculo en modo robot. Mis circuitos están listos para jugar.'],
@@ -93,7 +93,7 @@ export const COACHES: readonly Coach[] = [
   },
   {
     id: 'animadora', name: 'Animadora', emoji: '📣', tagline: '¡Ra, ra, ra, a ganar!',
-    gradient: 'from-fuchsia-400 to-amber-400', image: '/potroculo/animadora.webp',
+    gradient: 'from-pink-400 to-amber-400', image: '/potroculo/animadora.webp',
     tts: { engine: 'edge', voice: 'es-ES-XimenaNeural', rate: '+14%', pitch: '+28Hz' },
     web: { pitch: 1.4, rate: 1.15, male: false },
     intro: ['¡Hola, hola! ¡Potróculo en modo animadora! ¡Vamos, vamos, vamos!'],

@@ -16,7 +16,7 @@ interface Props {
 const strip = ({ white: _w, ...p }: Found): Puzzle => p; // keeps lichessId + rating for reviews
 const whiteToMove = (fen: string) => { try { return new Chess(fen).turn() === 'w'; } catch { return true; } };
 const chip = (on: boolean) =>
-  `min-h-11 rounded-full px-3 py-2 font-bold ${on ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-300'}`;
+  `min-h-11 rounded-full px-3 py-2 font-bold ${on ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-300'}`;
 
 /** "Generar desde Lichess": pick theme + Elo + count, preview, then copy into the activity. */
 export function LichessGenerator({ clubId, hasPuzzles, onUse }: Props) {
@@ -130,9 +130,9 @@ export function LichessGenerator({ clubId, hasPuzzles, onUse }: Props) {
         {rangeError && <p role="alert" class="mt-1 font-bold text-rose-700">{rangeError}</p>}
       </div>
 
-      <label class="block font-bold">3. ¿Cuántos problemas? <span class="text-violet-700">{count}</span>
+      <label class="block font-bold">3. ¿Cuántos problemas? <span class="text-brand-700">{count}</span>
         <input type="range" min={1} max={MAX_PUZZLES} value={count} aria-valuetext={`${count} problemas`}
-          class="mt-1 block h-11 w-full max-w-sm accent-violet-600"
+          class="mt-1 block h-11 w-full max-w-sm accent-brand-600"
           onInput={(e) => setCount(Number((e.target as HTMLInputElement).value))} />
       </label>
 

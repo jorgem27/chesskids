@@ -1,4 +1,4 @@
-# ♞ ChessKids Academy
+# ♞ Odisea Miranda (antes ChessKids Academy)
 
 Gamified chess platform for kids (5–15 years), fully in Spanish. Built with **Astro + Tailwind + Preact islands**, **Chessground** (Lichess board) and **chess.js**, running on **Cloudflare Workers + D1**.
 

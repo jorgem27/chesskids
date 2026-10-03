@@ -12,3 +12,7 @@ backup.sql
 *.sql.bak
 dump*.sql
 .playwright-mcp/
+
+# Local junk
+desktop.ini
+repomix-output.xml

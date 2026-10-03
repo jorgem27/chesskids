@@ -32,8 +32,8 @@ export default function PrintCards({ classId, className, classCode, origin, stud
       <p class="mb-4 text-sm text-slate-500 print:hidden">Cada tarjeta tiene el QR personal del alumno: al escanearlo con el móvil entra directamente y el dispositivo le recuerda.</p>
       <div class="grid grid-cols-2 gap-4 md:grid-cols-3 print:grid-cols-3">
         {students.map((s) => (
-          <div key={s.id} class="break-inside-avoid rounded-3xl border-4 border-dashed border-violet-300 p-4 text-center">
-            <p class="text-xs font-black uppercase tracking-widest text-violet-500">♞ ChessKids Academy</p>
+          <div key={s.id} class="break-inside-avoid rounded-3xl border-4 border-dashed border-brand-300 p-4 text-center">
+            <p class="text-xs font-black uppercase tracking-widest text-brand-500">Odisea Miranda</p>
             <p class="text-5xl">{s.avatar}</p>
             <p class="font-display text-2xl font-extrabold">{s.name}</p>
             <QR text={`${origin}/u/${s.token}`} size={130} class="mx-auto my-2" />

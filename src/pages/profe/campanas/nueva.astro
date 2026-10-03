@@ -13,7 +13,7 @@ const { results: library } = await db.prepare(
 ).bind(club.id, coach.id).all<{ id: number; title: string; type: string; visibility: string }>();
 ---
 <CoachLayout title="Nueva campaña" wide>
-  <a href={`/profe/campanas?club=${club.id}`} class="text-sm font-bold text-violet-600 hover:underline">← Volver a Campañas</a>
+  <a href={`/profe/campanas?club=${club.id}`} class="text-sm font-bold text-brand-600 hover:underline">← Volver a Campañas</a>
   <h1 class="mb-5 mt-2 font-display text-3xl font-extrabold text-slate-800">🗺️ Nueva campaña{clubs.length > 1 && <span class="text-lg text-slate-500"> · {club.name}</span>}</h1>
   <CampaignEditor client:load clubId={club.id} canEdit={true} campaign={null} nodes={[]} library={library} classes={[]} progress={[]} />
 </CoachLayout>

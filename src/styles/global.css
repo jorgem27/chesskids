@@ -1,48 +1,104 @@
 @import "tailwindcss";
 
+/* Odisea Miranda palette: deep navy/royal blue ("brand") and laurel gold ("gold"). */
 @theme {
-  --font-display: "Baloo 2", "Nunito", system-ui, sans-serif;
+  --font-display: "Outfit", "Nunito", system-ui, sans-serif;
   --font-sans: "Nunito", system-ui, sans-serif;
+  --font-brand: "Cinzel", Georgia, serif;
+
+  --color-brand-50: #eef3fb;
+  --color-brand-100: #dbe5f6;
+  --color-brand-200: #bccdee;
+  --color-brand-300: #8fabe0;
+  --color-brand-400: #5e84cf;
+  --color-brand-500: #3a63ba;
+  --color-brand-600: #2a4c9d;
+  --color-brand-700: #233e80;
+  --color-brand-800: #1d3366;
+  --color-brand-900: #162750;
+  --color-brand-950: #0b1631;
+
+  --color-gold-50: #fdf9ec;
+  --color-gold-100: #faefcc;
+  --color-gold-200: #f4dd96;
+  --color-gold-300: #ecc65c;
+  --color-gold-400: #e2ae34;
+  --color-gold-500: #c9921f;
+  --color-gold-600: #a87316;
+  --color-gold-700: #855616;
+  --color-gold-800: #6d4518;
+  --color-gold-900: #5c3a19;
+  --color-gold-950: #351e09;
 }
 
 :root {
-  --ck-violet: #7c3aed;
-  --ck-violet-dark: #5b21b6;
+  --ck-primary: #2a4c9d;
+  --ck-primary-dark: #162750;
+  --om-navy: #0b1631;
+  --om-gold: #e2ae34;
+  /* Greek key (meander) strip, used as a thin decorative border. */
+  --om-meander: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M0 11h4V3h10v6H9V6' fill='none' stroke='%23e2ae34' stroke-width='1.6'/%3E%3Cpath d='M12 11h4V3h10' fill='none' stroke='%23e2ae34' stroke-width='1.6'/%3E%3C/svg%3E");
 }
 
 html { -webkit-tap-highlight-color: transparent; }
 body {
   font-family: var(--font-sans);
-  background: #f5f3ff;
-  color: #1e1b4b;
+  background: #f3f5fa;
+  color: #0f1a36;
   min-height: 100dvh;
   overscroll-behavior-y: none;
 }
 h1, h2, h3, .font-display { font-family: var(--font-display); }
+.font-brand { font-family: var(--font-brand); letter-spacing: .04em; }
+:focus-visible { outline: 3px solid var(--om-gold); outline-offset: 2px; border-radius: 6px; }
 
 /* ---------- Buttons (chunky, Duolingo-like 3D) ---------- */
 @layer components {
   .ck-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 font-display text-lg font-extrabold tracking-wide transition select-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 font-display text-lg font-bold tracking-wide transition select-none;
     box-shadow: 0 5px 0 rgb(0 0 0 / 0.14);
     transform: translateY(0);
   }
   .ck-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgb(0 0 0 / 0.14); }
   .ck-btn:disabled { @apply opacity-50; transform: none; }
-  .ck-btn-primary { background: var(--ck-violet); color: white; box-shadow: 0 5px 0 var(--ck-violet-dark); }
-  .ck-btn-primary:active { box-shadow: 0 1px 0 var(--ck-violet-dark); }
+  .ck-btn-primary { background: var(--ck-primary); color: white; box-shadow: 0 5px 0 var(--ck-primary-dark); }
+  .ck-btn-primary:active { box-shadow: 0 1px 0 var(--ck-primary-dark); }
+  .ck-btn-gold { @apply bg-gold-400 text-brand-950; box-shadow: 0 5px 0 #855616; }
+  .ck-btn-gold:active { box-shadow: 0 1px 0 #855616; }
   .ck-btn-green { @apply bg-emerald-500 text-white; box-shadow: 0 5px 0 #047857; }
   .ck-btn-green:active { box-shadow: 0 1px 0 #047857; }
   .ck-btn-orange { @apply bg-amber-400 text-amber-950; box-shadow: 0 5px 0 #b45309; }
   .ck-btn-sm {
-    @apply inline-flex items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-40;
+    @apply inline-flex min-h-9 items-center gap-1 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-40;
   }
   .ck-input {
-    @apply rounded-xl border-2 border-slate-200 bg-white px-3 py-2 outline-none transition focus:border-violet-500;
+    @apply rounded-xl border-2 border-slate-200 bg-white px-3 py-2 outline-none transition focus:border-brand-500;
   }
-  .ck-card { @apply rounded-3xl bg-white p-5 shadow-[0_6px_0_rgb(0_0_0/0.06),0_10px_30px_rgb(76_29_149/0.08)]; }
-  .ck-code { @apply rounded bg-white px-1 py-0.5 font-mono text-xs text-violet-700; }
+  .ck-card { @apply rounded-3xl border border-brand-100/70 bg-white p-5 shadow-[0_4px_0_rgb(11_22_49/0.05),0_10px_30px_rgb(11_22_49/0.07)]; }
+  .ck-code { @apply rounded bg-white px-1 py-0.5 font-mono text-xs text-brand-700; }
+
+  /* Small KPI tile for the analytics views */
+  .om-stat { @apply rounded-2xl border border-brand-100 bg-white p-3; }
+  .om-stat dt { @apply text-xs font-bold uppercase tracking-wide text-slate-500; }
+  .om-stat dd { @apply font-display text-2xl font-bold text-brand-900 tabular-nums; }
 }
+
+/* ---------- Mythic decoration ---------- */
+.om-meander { height: 12px; background: var(--om-meander) repeat-x center / auto 100%; opacity: .9; }
+/* Night sky: navy with a few golden stars. */
+.om-night {
+  background:
+    radial-gradient(1.5px 1.5px at 12% 22%, #f4dd96 50%, transparent 51%),
+    radial-gradient(1px 1px at 68% 14%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 84% 62%, #ecc65c 50%, transparent 51%),
+    radial-gradient(1px 1px at 34% 78%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 52% 44%, #f4dd96 50%, transparent 51%),
+    radial-gradient(ellipse at 20% 0%, #233e80 0%, #162750 45%, #0b1631 100%);
+  background-size: 260px 260px, 200px 200px, 320px 320px, 180px 180px, 240px 240px, 100% 100%;
+  color: white;
+}
+.om-gold-text { background: linear-gradient(180deg, #faefcc 0%, #ecc65c 45%, #c9921f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.om-logo { border-radius: 9999px; box-shadow: 0 0 0 2px #e2ae34, 0 8px 24px rgb(0 0 0 / .25); }
 
 /* ---------- Animations ---------- */
 @keyframes ck-shake { 0%,100% { transform: translateX(0) } 20% { transform: translateX(-10px) rotate(-1deg) } 40% { transform: translateX(9px) rotate(1deg) } 60% { transform: translateX(-6px) } 80% { transform: translateX(4px) } }
@@ -72,32 +128,32 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 
 /* ---------- Chessground kid theme ---------- */
 .ck-board cg-board {
-  background-color: #eef6d9;
-  background-image: repeating-conic-gradient(#86c06c 0 25%, transparent 0 50%);
+  background-color: #eef1f6;
+  background-image: repeating-conic-gradient(#7d97bf 0 25%, transparent 0 50%);
   background-size: 25% 25%;
   border-radius: 6px;
 }
-/* PGN lessons: a variation ("¿Y si…?") is played on a slightly bluer board */
+/* PGN lessons: a variation ("¿Y si…?") is played on a warm golden board */
 .ck-board.ck-variation cg-board {
-  background-color: #e6f0fa;
-  background-image: repeating-conic-gradient(#7fb0d6 0 25%, transparent 0 50%);
+  background-color: #fbf4e0;
+  background-image: repeating-conic-gradient(#d2ab5f 0 25%, transparent 0 50%);
 }
-.ck-board.ck-variation .cg-wrap, .ck-board.ck-variation > div:first-child { box-shadow: 0 6px 0 #0369a133, 0 14px 40px #0369a144; }
+.ck-board.ck-variation .cg-wrap, .ck-board.ck-variation > div:first-child { box-shadow: 0 6px 0 #a8731633, 0 14px 40px #a8731644; }
 .ck-board cg-container { border-radius: 6px; }
-.ck-board .cg-wrap, .ck-board > div:first-child { border-radius: 8px; box-shadow: 0 6px 0 #4d7c0f33, 0 14px 40px #3b076433; }
-.ck-board cg-board square.move-dest { background: radial-gradient(rgb(124 58 237 / .45) 22%, transparent 24%); }
-.ck-board cg-board square.oc.move-dest { background: radial-gradient(transparent 0%, transparent 79%, rgb(124 58 237 / .45) 80%); }
+.ck-board .cg-wrap, .ck-board > div:first-child { border-radius: 8px; box-shadow: 0 6px 0 #16275033, 0 14px 40px #0b163133; }
+.ck-board cg-board square.move-dest { background: radial-gradient(rgb(22 39 80 / .4) 22%, transparent 24%); }
+.ck-board cg-board square.oc.move-dest { background: radial-gradient(transparent 0%, transparent 79%, rgb(22 39 80 / .4) 80%); }
 .ck-board cg-board square.last-move { background-color: rgb(250 204 21 / .45); }
-.ck-board cg-board square.selected { background-color: rgb(124 58 237 / .35); }
+.ck-board cg-board square.selected { background-color: rgb(42 76 157 / .35); }
 .ck-board cg-board square.check { background: radial-gradient(ellipse at center, #ef4444 0%, #ef444480 35%, transparent 70%); }
 .ck-board coords { font-weight: 800; font-size: 10px; text-transform: lowercase; opacity: .8; }
-.ck-board coords.ranks coord, .ck-board coords.files coord { color: #3f6212 !important; }
+.ck-board coords.ranks coord, .ck-board coords.files coord { color: #162750 !important; }
 
 /* Bigger UI for the little ones */
 [data-age="peque"] .ck-btn { @apply text-xl py-4; }
 
 /* Projector mode */
-.ck-projector { background: radial-gradient(circle at 20% 10%, #4c1d95, #1e1b4b 60%); color: white; }
+.ck-projector { background: radial-gradient(circle at 20% 10%, #233e80, #0b1631 60%); color: white; }
 
 /* Board background unlocked with the "Fondo espacial" campaign reward */
 .ck-space-bg {
@@ -106,8 +162,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
     radial-gradient(1px 1px at 72% 12%, #fff 50%, transparent 51%),
     radial-gradient(2px 2px at 40% 70%, #fde68a 50%, transparent 51%),
     radial-gradient(1px 1px at 88% 56%, #fff 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 22% 86%, #c4b5fd 50%, transparent 51%),
-    radial-gradient(circle at 30% 20%, #4c1d95 0%, #1e1b4b 55%, #0f172a 100%);
+    radial-gradient(1.5px 1.5px at 22% 86%, #bccdee 50%, transparent 51%),
+    radial-gradient(circle at 30% 20%, #233e80 0%, #0b1631 55%, #0f172a 100%);
   background-size: 220px 220px, 260px 260px, 300px 300px, 180px 180px, 240px 240px, 100% 100%;
 }
 .ck-space-bg header a, .ck-space-bg header button { color: #e2e8f0; }

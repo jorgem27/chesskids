@@ -79,7 +79,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
   }
 
   const familyMsg = (s: { name: string; token: string }) =>
-    `¡Hola! ♟️ Este es el acceso de ${s.name} a ChessKids Academy (${className}). Tócalo desde su móvil o tablet y entrará directamente; el dispositivo le recordará:\n${personal(s.token)}`;
+    `¡Hola! ♟️ Este es el acceso de ${s.name} a Odisea Miranda (${className}). Tócalo desde su móvil o tablet y entrará directamente; el dispositivo le recordará:\n${personal(s.token)}`;
 
   return (
     <div class="space-y-6">
@@ -88,10 +88,10 @@ export default function StudentManager({ classId, classCode, className, origin, 
         <QR text={classLink} size={170} class="mx-auto rounded-xl" />
         <div class="space-y-3">
           <p class="text-sm font-bold uppercase tracking-wide text-slate-500">Acceso de la clase</p>
-          <p class="font-mono text-5xl font-black tracking-[0.3em] text-violet-700">{classCode}</p>
+          <p class="font-mono text-5xl font-black tracking-[0.3em] text-brand-700">{classCode}</p>
           <p class="text-sm text-slate-600">Los alumnos entran en <b>{origin.replace(/^https?:\/\//, '')}/entrar</b> con este código, eligen su animal y tocan sus 3 dibujos secretos. También pueden escanear este QR.</p>
           <div class="flex flex-wrap gap-2">
-            <a class="ck-btn-sm !bg-emerald-500 !text-white" target="_blank" href={whatsappUrl(`¡Hola familias! ♟️ Enlace de la clase ${className} en ChessKids Academy: ${classLink}\nCada peque elige su animal y toca sus 3 dibujos secretos.`)}>💬 Enviar por WhatsApp</a>
+            <a class="ck-btn-sm !bg-emerald-500 !text-white" target="_blank" href={whatsappUrl(`¡Hola familias! ♟️ Enlace de la clase ${className} en Odisea Miranda:${classLink}\nCada peque elige su animal y toca sus 3 dibujos secretos.`)}>💬 Enviar por WhatsApp</a>
             <button class="ck-btn-sm" onClick={() => flashCopy(classLink, 'class')}>{copied === 'class' ? '✅ Copiado' : '🔗 Copiar enlace'}</button>
             <a class="ck-btn-sm" href={`/profe/clase/${classId}/tarjetas`}>🖨️ Tarjetas de acceso</a>
           </div>
@@ -151,7 +151,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
         <p class="mb-4 text-sm text-rose-600 font-bold">Guarda o imprime ahora estas contraseñas: por seguridad no se vuelven a mostrar (se pueden regenerar).</p>
         <div id="ck-print-cards" class="grid gap-3 sm:grid-cols-2">
           {created?.map((c) => (
-            <div key={c.id} class="flex gap-3 rounded-2xl border-2 border-dashed border-violet-300 p-3">
+            <div key={c.id} class="flex gap-3 rounded-2xl border-2 border-dashed border-brand-300 p-3">
               <QR text={personal(c.token)} size={96} />
               <div class="min-w-0 text-sm">
                 <p class="font-display text-lg font-extrabold">{c.avatar} {c.name}</p>
@@ -174,7 +174,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
               <span class="text-6xl">{open.avatar}</span>
               <div><h2 class="font-display text-2xl font-extrabold">{open.name}</h2><p class="font-mono text-sm text-slate-500">@{open.username}</p></div>
             </div>
-            <div class="flex flex-col items-center gap-2 rounded-2xl bg-violet-50 p-4">
+            <div class="flex flex-col items-center gap-2 rounded-2xl bg-brand-50 p-4">
               <QR text={personal(open.token)} size={180} />
               <p class="text-center text-xs text-slate-600">QR / enlace personal: entra directamente y el dispositivo le recuerda.</p>
               <div class="flex flex-wrap justify-center gap-2">
@@ -204,7 +204,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
                   {Object.entries(AGE_GROUPS).map(([k, v]) => <option value={k}>{v.emoji} {v.label} ({v.range})</option>)}
                 </select>
                 <div class="grid grid-cols-10 gap-1">
-                  {AVATARS.map((a) => <button key={a} onClick={() => action(open, 'update', { avatar: a })} class={`rounded-lg text-2xl ${open.avatar === a ? 'bg-violet-200' : 'hover:bg-slate-200'}`}>{a}</button>)}
+                  {AVATARS.map((a) => <button key={a} onClick={() => action(open, 'update', { avatar: a })} class={`rounded-lg text-2xl ${open.avatar === a ? 'bg-brand-200' : 'hover:bg-slate-200'}`}>{a}</button>)}
                 </div>
                 <form onSubmit={(e) => remove(open, e)} class="space-y-2 rounded-2xl bg-rose-50 p-3">
                   <p class="text-sm font-bold text-rose-700">🗑️ Borrar alumno</p>

@@ -147,7 +147,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
     <span class="text-5xl">{cls.emoji}</span>
     <div class="flex-1">
       <h1 class="font-display text-3xl font-extrabold">{cls.name}</h1>
-      <p class="text-sm text-slate-500">Código <b class="font-mono text-violet-700">{cls.code}</b> · {students.length} alumnos</p>
+      <p class="text-sm text-slate-500">Código <b class="font-mono text-brand-700">{cls.code}</b> · {students.length} alumnos</p>
     </div>
     <a href={`/profe/clase/${id}/leccion`} class="ck-btn ck-btn-primary">🎲 Lección con dado</a>
     <a href={`/profe/clase/${id}/proyector`} class="ck-btn ck-btn-orange">📽️ Modo proyector</a>
@@ -187,7 +187,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
   )}
 
   <nav class="mt-5 flex flex-wrap gap-2">
-    {tabs.map((tb) => <a href={`?tab=${tb.id}`} class={`rounded-2xl px-4 py-2 font-bold ${tab === tb.id ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{tb.label}</a>)}
+    {tabs.map((tb) => <a href={`?tab=${tb.id}`} class={`rounded-2xl px-4 py-2 font-bold ${tab === tb.id ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{tb.label}</a>)}
   </nav>
 
   <div class="mt-5">
@@ -227,7 +227,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
             <tr>
               <th class="sticky left-0 bg-slate-50 p-3">Alumno</th>
               <th class="p-3">Nivel</th><th class="p-3">Racha</th><th class="p-3">Problemas</th><th class="p-3">Tiempo</th><th class="p-3">Última vez</th>
-              {gridAsg.map((a) => <th class="p-3 text-center" title={`${a.title} · ver detalle`}><a href={`/profe/clase/${id}/actividad/${a.activity_id}`} class="hover:text-violet-700">{GAME_META[a.type]?.emoji}<br /><span class="inline-block max-w-24 truncate normal-case underline decoration-dotted">{a.title}</span></a></th>)}
+              {gridAsg.map((a) => <th class="p-3 text-center" title={`${a.title} · ver detalle`}><a href={`/profe/clase/${id}/actividad/${a.activity_id}`} class="hover:text-brand-700">{GAME_META[a.type]?.emoji}<br /><span class="inline-block max-w-24 truncate normal-case underline decoration-dotted">{a.title}</span></a></th>)}
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -255,7 +255,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
     {tab === 'torneos' && canView && (
       <div class="space-y-4">
         {!tourneys.length && (
-          <p class="ck-card text-slate-500">Aún no hay torneos guardados. Juega uno en el <a href={`/profe/clase/${id}/proyector`} class="font-bold text-violet-700">📽️ Modo proyector</a> y pulsa «Repartir el XP» (o «Guardar resultado») al final.</p>
+          <p class="ck-card text-slate-500">Aún no hay torneos guardados. Juega uno en el <a href={`/profe/clase/${id}/proyector`} class="font-bold text-brand-700">📽️ Modo proyector</a> y pulsa «Repartir el XP» (o «Guardar resultado») al final.</p>
         )}
         {tourneys.map((tn) => {
           const best = Math.max(...tn.teams.map((t) => t.score));
@@ -278,7 +278,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
                           <tr class="border-t border-slate-100">
                             <td class="py-1 font-bold"><span class="mr-1">{k.avatar}</span>{k.name}</td>
                             <td>{k.picks}</td><td>{k.solved}</td><td>{fmtPoints(pts.get(k.student_id) ?? 0)}</td>
-                            <td class="text-right font-bold text-violet-700">+{k.xp_earned}</td>
+                            <td class="text-right font-bold text-brand-700">+{k.xp_earned}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -301,7 +301,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
               <li class="rounded-2xl bg-slate-50 p-3 text-sm">
                 <p class="font-bold">{c.name} <span class="font-normal text-slate-500">{c.email}</span></p>
                 <p class="mt-1 flex flex-wrap gap-1 text-xs">
-                  {c.is_owner ? <span class="rounded-full bg-violet-100 px-2 py-0.5 font-bold text-violet-700">👑 Responsable</span> : (
+                  {c.is_owner ? <span class="rounded-full bg-brand-100 px-2 py-0.5 font-bold text-brand-700">👑 Responsable</span> : (
                     <>
                       {c.can_view_progress ? <span class="rounded-full bg-sky-100 px-2 py-0.5">📈 Ver progreso</span> : null}
                       {c.can_create_content ? <span class="rounded-full bg-amber-100 px-2 py-0.5">🧩 Poner deberes</span> : null}

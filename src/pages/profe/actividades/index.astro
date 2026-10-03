@@ -32,7 +32,7 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
     )}
   </div>
 
-  {!clubId ? <p class="ck-card mt-6">Primero crea un club en <a href="/profe" class="font-bold text-violet-600">Mis clases</a>.</p> : (
+  {!clubId ? <p class="ck-card mt-6">Primero crea un club en <a href="/profe" class="font-bold text-brand-600">Mis clases</a>.</p> : (
     <>
       <h2 class="mt-6 font-display text-xl font-extrabold">Crear nueva{isAdmin ? '' : ' (privada)'}</h2>
       <a href={`/profe/actividades/nueva?tipo=puzzle-hint&club=${clubId}&lichess=1`}
@@ -56,8 +56,8 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
 
       <div class="mt-8 flex flex-wrap items-center gap-2">
         <h2 class="mr-2 font-display text-xl font-extrabold">Filtrar</h2>
-        <a href={`?club=${clubId}`} class={`rounded-full px-3 py-1 text-sm font-bold ${!filter ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>Todas</a>
-        {GAME_TYPES.map((t) => <a href={`?club=${clubId}&tipo=${t}`} class={`rounded-full px-3 py-1 text-sm font-bold ${filter === t ? 'bg-violet-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>{GAME_META[t].emoji} {GAME_META[t].name}</a>)}
+        <a href={`?club=${clubId}`} class={`rounded-full px-3 py-1 text-sm font-bold ${!filter ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>Todas</a>
+        {GAME_TYPES.map((t) => <a href={`?club=${clubId}&tipo=${t}`} class={`rounded-full px-3 py-1 text-sm font-bold ${filter === t ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>{GAME_META[t].emoji} {GAME_META[t].name}</a>)}
       </div>
       {[
         { key: 'mine', title: '🔒 Mis actividades privadas', hint: 'Solo las ves tú. Aquí aparecen tus copias de las públicas.', list: mine },
@@ -75,7 +75,7 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-bold">{r.title}</p>
                   <p class="text-xs text-slate-500">{count(r)} {GAME_META[r.type]?.countLabel} · {r.xp_reward} XP · usada {r.uses}× · {r.author ?? '—'}</p>
-                  {r.source_title && <p class="truncate text-xs text-violet-600">Copia de «{r.source_title}»</p>}
+                  {r.source_title && <p class="truncate text-xs text-brand-600">Copia de «{r.source_title}»</p>}
                 </div>
                 <a href={`/profe/actividades/${r.id}/probar`} class="ck-btn-sm" title="Probar">▶</a>
                 <a href={`/profe/actividades/${r.id}`} class="ck-btn-sm" title={r.visibility === 'public' && !isAdmin ? 'Personalizar (crea tu copia)' : 'Editar'}>✏️</a>

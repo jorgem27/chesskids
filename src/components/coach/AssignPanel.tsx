@@ -100,7 +100,7 @@ export default function AssignPanel({ classId, className, classCode, origin, can
       {canCreate && (
         <form onSubmit={submit} class="ck-card space-y-4">
           <h2 class="font-display text-xl font-extrabold">➕ Poner deberes / misiones</h2>
-          {!library.length && <p class="text-slate-500">Primero crea actividades en <a href="/profe/actividades" class="font-bold text-violet-600">Actividades</a>.</p>}
+          {!library.length && <p class="text-slate-500">Primero crea actividades en <a href="/profe/actividades" class="font-bold text-brand-600">Actividades</a>.</p>}
           {library.length > 8 && <input class="ck-input w-full" placeholder="🔍 Buscar actividad…" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} />}
           <div class="grid max-h-80 gap-2 overflow-auto sm:grid-cols-2">
             {library.filter((l) => !query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase()) || sel.includes(l.id)).map((l) => {
@@ -108,9 +108,9 @@ export default function AssignPanel({ classId, className, classCode, origin, can
               const order = sel.indexOf(l.id);
               const meta = GAME_META[l.type];
               return (
-                <label key={l.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 ${on ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
+                <label key={l.id} class={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 ${on ? 'border-brand-500 bg-brand-50' : 'border-slate-200'}`}>
                   <input type="checkbox" checked={on} onChange={() => setSel(on ? sel.filter((x) => x !== l.id) : [...sel, l.id])} />
-                  {on && schedule !== 'all' && <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white">{order + 1}</span>}
+                  {on && schedule !== 'all' && <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-black text-white">{order + 1}</span>}
                   <span class="text-2xl">{meta?.emoji}</span>
                   <span class="min-w-0 flex-1"><b class="block truncate">{l.visibility === 'private' ? '🔒 ' : ''}{l.title}</b><span class="text-xs text-slate-500">{meta?.name} · {l.count} {meta?.countLabel}</span></span>
                 </label>
@@ -130,7 +130,7 @@ export default function AssignPanel({ classId, className, classCode, origin, can
             <ol class="flex flex-wrap gap-2 text-xs">
               {scheduleDates(starts, due, sel.length, schedule, span).map((d, i) => {
                 const l = library.find((x) => x.id === sel[i]);
-                return <li class="rounded-full bg-violet-50 px-2 py-1 text-violet-800"><b>{i + 1}.</b> {l?.title} · {shortDate(d.startsOn)}–{d.dueOn && shortDate(d.dueOn)}</li>;
+                return <li class="rounded-full bg-brand-50 px-2 py-1 text-brand-800"><b>{i + 1}.</b> {l?.title} · {shortDate(d.startsOn)}–{d.dueOn && shortDate(d.dueOn)}</li>;
               })}
             </ol>
           )}
@@ -141,7 +141,7 @@ export default function AssignPanel({ classId, className, classCode, origin, can
               {otherClasses.map((c) => {
                 const on = extra.includes(c.id);
                 return (
-                  <label key={c.id} class={`flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-2 px-3 ${on ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
+                  <label key={c.id} class={`flex min-h-11 cursor-pointer items-center gap-2 rounded-full border-2 px-3 ${on ? 'border-brand-500 bg-brand-50' : 'border-slate-200'}`}>
                     <input type="checkbox" checked={on} onChange={() => setExtra(on ? extra.filter((x) => x !== c.id) : [...extra, c.id])} />{c.emoji} {c.name}
                   </label>
                 );

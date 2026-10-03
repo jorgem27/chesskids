@@ -9,6 +9,6 @@ const { results: students } = await db.prepare('SELECT id, display_name AS name,
   .bind(cls.id).all<{ id: number; name: string; avatar: string }>();
 const preselect = Number(Astro.url.searchParams.get('s')) || null;
 ---
-<Base title={`${cls.name} · ChessKids`}>
+<Base title={`${cls.name} · Odisea Miranda`}>
   <AvatarPinLogin client:load code={cls.code} className={cls.name} classEmoji={cls.emoji} students={students} preselect={preselect} />
 </Base>

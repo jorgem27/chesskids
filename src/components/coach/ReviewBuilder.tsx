@@ -55,8 +55,8 @@ export default function ReviewBuilder({ classId, activityId = null, canCreate, f
         <p class="text-sm text-slate-500">Junta en una actividad nueva los problemas que más ha fallado la clase{activityId ? ' en esta actividad' : ''}.</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setMode('puzzle-hint')} aria-pressed={mode === 'puzzle-hint'} class={`ck-btn-sm ${mode === 'puzzle-hint' ? '!bg-violet-600 !text-white' : ''}`}>🧩 Con pistas</button>
-        <button type="button" onClick={() => setMode('puzzle-blitz')} aria-pressed={mode === 'puzzle-blitz'} class={`ck-btn-sm ${mode === 'puzzle-blitz' ? '!bg-violet-600 !text-white' : ''}`}>⚡ Relámpago</button>
+        <button type="button" onClick={() => setMode('puzzle-hint')} aria-pressed={mode === 'puzzle-hint'} class={`ck-btn-sm ${mode === 'puzzle-hint' ? '!bg-brand-600 !text-white' : ''}`}>🧩 Con pistas</button>
+        <button type="button" onClick={() => setMode('puzzle-blitz')} aria-pressed={mode === 'puzzle-blitz'} class={`ck-btn-sm ${mode === 'puzzle-blitz' ? '!bg-brand-600 !text-white' : ''}`}>⚡ Relámpago</button>
         {!activityId && (
           <select class="ck-input !py-1 text-sm" value={days} onChange={(e) => setDays(Number((e.target as HTMLSelectElement).value))} aria-label="Periodo">
             <option value={7}>Última semana</option>

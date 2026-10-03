@@ -1,4 +1,4 @@
-// "Potróculo", the ChessKids mascot: a gentleman horse with top hat, monocle, moustache and a
+// "Potróculo", the Odisea Miranda mascot: a gentleman horse with top hat, monocle, moustache and a
 // golden pawn. Original SVG "puppet": every body part is its own group (head, ears, eyes, mouth,
 // arms, legs, tail, hat) so CSS can animate it — no image files, no 3D engine, cheap on phones.
 // Poses and animations live in potroculo.css; the mood picks one of them.

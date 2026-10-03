@@ -118,7 +118,7 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
             <div class="mt-1 flex flex-wrap gap-1">
               {CAMPAIGN_EMOJIS.map((e) => (
                 <button type="button" key={e} disabled={ro} onClick={() => touch(setEmoji)(e)} aria-pressed={emoji === e}
-                  class={`h-11 w-11 rounded-xl text-2xl ${emoji === e ? 'bg-violet-100 ring-2 ring-violet-500' : 'bg-slate-50 hover:bg-slate-100'}`}>{e}</button>
+                  class={`h-11 w-11 rounded-xl text-2xl ${emoji === e ? 'bg-brand-100 ring-2 ring-brand-500' : 'bg-slate-50 hover:bg-slate-100'}`}>{e}</button>
               ))}
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
             <div class="mt-1 grid grid-cols-3 gap-2 sm:grid-cols-6">
               {CAMPAIGN_THEMES.map((t) => (
                 <button type="button" key={t.id} disabled={ro} onClick={() => touch(setTheme)(t.id)} aria-pressed={theme === t.id}
-                  class={`flex min-h-16 flex-col items-center justify-center rounded-2xl text-xs font-extrabold ${theme === t.id ? 'ring-4 ring-violet-500' : 'ring-1 ring-slate-200'} ${t.id === 'espacio' || t.id === 'volcan' ? 'text-white' : 'text-slate-800'}`}
+                  class={`flex min-h-16 flex-col items-center justify-center rounded-2xl text-xs font-extrabold ${theme === t.id ? 'ring-4 ring-brand-500' : 'ring-1 ring-slate-200'} ${t.id === 'espacio' || t.id === 'volcan' ? 'text-white' : 'text-slate-800'}`}
                   style={{ background: t.bg }}>
                   <span class="text-2xl">{t.emoji}</span>{t.name}
                 </button>
@@ -139,7 +139,7 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
             <div class="mt-1 grid gap-2 sm:grid-cols-2">
               {CAMPAIGN_REWARDS.map((r) => (
                 <button type="button" key={r.id} disabled={ro} onClick={() => touch(setReward)(r.id)} aria-pressed={reward === r.id}
-                  class={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left ${reward === r.id ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                  class={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left ${reward === r.id ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:bg-slate-50'}`}>
                   <span class="text-3xl">{r.emoji}</span>
                   <span><b class="block text-sm">{r.name}</b><span class="text-xs text-slate-500">{r.description}</span></span>
                 </button>
@@ -158,7 +158,7 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
           <ol class="mt-3 space-y-2">
             {nodes.map((n, i) => (
               <li key={`${n.id ?? 'new'}-${n.activityId}-${i}`} class="flex items-center gap-2 rounded-2xl bg-white p-2 ring-1 ring-slate-200">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">{i + 1}</span>
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-black text-white">{i + 1}</span>
                 <span class="text-2xl">{GAME_META[n.type]?.emoji ?? '🎮'}</span>
                 <span class="min-w-0 flex-1"><b class="block truncate">{n.title}</b><span class="text-xs text-slate-500">{GAME_META[n.type]?.name}{!n.id && ' · nuevo'}</span></span>
                 {!ro && (
@@ -182,14 +182,14 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
                 {found.map((a) => {
                   const used = nodes.filter((n) => n.activityId === a.id).length;
                   return (
-                    <button type="button" key={a.id} onClick={() => add(a)} class="flex items-center gap-2 rounded-2xl border-2 border-slate-200 p-2 text-left hover:border-violet-400 hover:bg-violet-50">
+                    <button type="button" key={a.id} onClick={() => add(a)} class="flex items-center gap-2 rounded-2xl border-2 border-slate-200 p-2 text-left hover:border-brand-400 hover:bg-brand-50">
                       <span class="text-2xl">{GAME_META[a.type]?.emoji}</span>
                       <span class="min-w-0 flex-1"><b class="block truncate text-sm">{a.visibility === 'private' ? '🔒 ' : ''}{a.title}</b><span class="text-xs text-slate-500">{GAME_META[a.type]?.name}{used ? ` · ya en el mapa${used > 1 ? ` ×${used}` : ''}` : ''}</span></span>
-                      <span class="font-black text-violet-600">＋</span>
+                      <span class="font-black text-brand-600">＋</span>
                     </button>
                   );
                 })}
-                {!found.length && <p class="text-sm text-slate-500">No hay actividades con ese nombre. Créalas en <a class="font-bold text-violet-600" href="/profe/actividades">Actividades</a>.</p>}
+                {!found.length && <p class="text-sm text-slate-500">No hay actividades con ese nombre. Créalas en <a class="font-bold text-brand-600" href="/profe/actividades">Actividades</a>.</p>}
               </div>
             </div>
           )}
@@ -210,11 +210,11 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
             <p class="text-sm text-slate-500">Los alumnos verán el mapa en su inicio.</p>
             <ul class="mt-3 space-y-2">
               {classes.map((c) => (
-                <li key={c.id} class={`flex items-center gap-3 rounded-2xl p-3 ring-1 ${c.assigned ? 'bg-violet-50 ring-violet-200' : 'bg-white ring-slate-200'}`}>
+                <li key={c.id} class={`flex items-center gap-3 rounded-2xl p-3 ring-1 ${c.assigned ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'}`}>
                   <span class="text-2xl">{c.emoji}</span>
                   <b class="flex-1">{c.name}</b>
                   {c.canAssign ? (
-                    <button type="button" class={`ck-btn-sm ${c.assigned ? '' : '!bg-violet-600 !text-white'}`} onClick={() => toggleClass(c)}>{c.assigned ? '✓ Puesta · Quitar' : 'Poner en esta clase'}</button>
+                    <button type="button" class={`ck-btn-sm ${c.assigned ? '' : '!bg-brand-600 !text-white'}`} onClick={() => toggleClass(c)}>{c.assigned ? '✓ Puesta · Quitar' : 'Poner en esta clase'}</button>
                   ) : <span class="text-xs text-slate-500">{c.assigned ? '✓ Puesta' : 'Sin permiso'}</span>}
                 </li>
               ))}
@@ -254,7 +254,7 @@ export default function CampaignEditor({ clubId, campaign, canEdit, nodes: initi
             <path d={mapPath(pts)} stroke={th.path} stroke-width="9" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke" />
           </svg>
           {nodes.map((n, i) => (
-            <span key={i} class="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-gradient-to-b from-violet-500 to-fuchsia-500 text-xl shadow" style={{ left: `${pts[i].x}%`, top: `${pts[i].y}%` }} title={n.title}>
+            <span key={i} class="absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-gradient-to-b from-brand-500 to-gold-500 text-xl shadow" style={{ left: `${pts[i].x}%`, top: `${pts[i].y}%` }} title={n.title}>
               {GAME_META[n.type]?.emoji ?? '🎮'}
             </span>
           ))}

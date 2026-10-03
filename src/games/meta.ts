@@ -55,7 +55,7 @@ export const GAME_META: Record<string, GameMeta> = {
     id: 'puzzle-hint',
     name: 'Problemas con pistas',
     emoji: '🧩',
-    gradient: 'from-violet-500 to-fuchsia-500',
+    gradient: 'from-brand-600 to-brand-800',
     tagline: 'Piensa con calma. Si fallas, ¡te doy una pista!',
     help: 'Si el alumno se equivoca, se ilumina la pieza que debe mover. Al segundo fallo, aparece una flecha.',
     defaultXp: 30,

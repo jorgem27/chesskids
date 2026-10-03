@@ -1,9 +1,14 @@
 {
-  "name": "ChessKids Academy",
-  "short_name": "ChessKids",
+  "name": "Odisea Miranda",
+  "short_name": "Odisea Miranda",
+  "description": "Aprende ajedrez jugando",
   "start_url": "/app",
   "display": "standalone",
-  "background_color": "#f5f3ff",
-  "theme_color": "#7c3aed",
-  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "background_color": "#0b1631",
+  "theme_color": "#0b1631",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
 }

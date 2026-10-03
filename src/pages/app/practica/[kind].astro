@@ -76,12 +76,12 @@ const activity = { id: 0, type: PRACTICE_MODE[kind], title: PRACTICE_TITLE[kind]
 const exitUrl = kind === 'entrena' ? '/app/practica/entrena' : '/app';
 ---
 {view === 'play' ? (
-  <Base title={`${PRACTICE_TITLE[kind]} · ChessKids`} age={s.age_group}>
+  <Base title={`${PRACTICE_TITLE[kind]} · Odisea Miranda`} age={s.age_group}>
     <GamePlayer client:only="preact" activity={activity} practice={{ sessionId }} ageGroup={s.age_group as AgeGroup} exitUrl={exitUrl} />
   </Base>
 ) : (
-  <StudentLayout title={`${PRACTICE_TITLE[kind]} · ChessKids`}>
-    <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-violet-700 hover:underline">← Volver al inicio</a>
+  <StudentLayout title={`${PRACTICE_TITLE[kind]} · Odisea Miranda`}>
+    <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-brand-700 hover:underline">← Volver al inicio</a>
 
     {view === 'empty' && kind === 'repaso' && (
       <div class="ck-card ck-rise mt-4 text-center">
@@ -107,7 +107,7 @@ const exitUrl = kind === 'entrena' ? '/app/practica/entrena' : '/app';
         <p class="mt-2 font-bold text-slate-600">Mañana habrá uno nuevo. {dailyStats.classmates > 0 && `${dailyStats.classmates} ${dailyStats.classmates === 1 ? 'compañero lo ha' : 'compañeros lo han'} resuelto hoy.`}</p>
         <div class="mt-6 flex flex-wrap justify-center gap-3">
           <a href="/app/practica/entrena" class="ck-btn ck-btn-primary">🏋️ Seguir entrenando</a>
-          <a href="/app" class="ck-btn bg-white text-violet-700 ring-1 ring-slate-200">🏠 Inicio</a>
+          <a href="/app" class="ck-btn bg-white text-brand-700 ring-1 ring-slate-200">🏠 Inicio</a>
         </div>
       </div>
     )}
@@ -126,7 +126,7 @@ const exitUrl = kind === 'entrena' ? '/app/practica/entrena' : '/app';
         <p class="font-bold text-slate-600">5 problemas a tu medida 💪</p>
         <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {themes.map((th, i) => (
-            <a href={`/app/practica/entrena?tema=${th.key}`} class="ck-rise flex min-h-24 flex-col items-center justify-center rounded-3xl bg-white p-3 text-center shadow-[0_5px_0_rgb(0_0_0/0.08)] ring-2 ring-slate-100 transition hover:-translate-y-1 hover:ring-violet-300 active:translate-y-1" style={`animation-delay:${i * 0.03}s`}>
+            <a href={`/app/practica/entrena?tema=${th.key}`} class="ck-rise flex min-h-24 flex-col items-center justify-center rounded-3xl bg-white p-3 text-center shadow-[0_5px_0_rgb(0_0_0/0.08)] ring-2 ring-slate-100 transition hover:-translate-y-1 hover:ring-brand-300 active:translate-y-1" style={`animation-delay:${i * 0.03}s`}>
               <span class="text-4xl">{th.emoji}</span>
               <span class="mt-1 font-display font-extrabold text-slate-700">{th.label}</span>
             </a>

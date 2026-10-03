@@ -32,8 +32,8 @@ const deco = Array.from({ length: Math.max(4, Math.round(nodes.length * 1.4)) },
   return { x, y, emoji: theme.deco[i % theme.deco.length], size: 1.6 + (i % 4) / 4, delay: (i % 5) * 0.4 };
 });
 ---
-<StudentLayout title={`${campaign.title} · ChessKids`}>
-  <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-violet-700 hover:underline">← Volver al inicio</a>
+<StudentLayout title={`${campaign.title} · Odisea Miranda`}>
+  <a href="/app" class="inline-flex min-h-11 items-center text-sm font-bold text-brand-700 hover:underline">← Volver al inicio</a>
 
   <!-- Header -->
   <section class="ck-card ck-rise mt-2 !p-0 overflow-hidden">
@@ -97,12 +97,12 @@ const deco = Array.from({ length: Math.max(4, Math.round(nodes.length * 1.4)) },
                 <div class={`${circle} border-slate-300 bg-slate-200 text-3xl grayscale`} aria-label={`${label} (bloqueado)`} title="Supera el nivel anterior para abrirlo">🔒</div>
               ) : (
                 <a href={`/app/jugar/${n.activity_id}?camp=${n.id}`} aria-label={label}
-                  class={`${circle} hover:-translate-y-1 active:translate-y-1 ${st === 'done' ? 'border-amber-400 bg-gradient-to-b from-amber-200 to-amber-400' : 'ck-node-next border-white bg-gradient-to-b from-violet-500 to-fuchsia-500'}`}>
+                  class={`${circle} hover:-translate-y-1 active:translate-y-1 ${st === 'done' ? 'border-amber-400 bg-gradient-to-b from-amber-200 to-amber-400' : 'ck-node-next border-white bg-gradient-to-b from-brand-500 to-gold-500'}`}>
                   {meta?.emoji ?? '🎮'}
                   {st === 'done' && <span class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-base font-black text-white ring-2 ring-white">✓</span>}
                 </a>
               )}
-              <div class={`mt-2 max-w-full rounded-2xl px-3 py-1 text-center shadow ${st === 'next' ? 'bg-violet-600 text-white' : st === 'done' ? 'bg-white text-slate-800' : 'bg-white/90 text-slate-600'}`}>
+              <div class={`mt-2 max-w-full rounded-2xl px-3 py-1 text-center shadow ${st === 'next' ? 'bg-brand-600 text-white' : st === 'done' ? 'bg-white text-slate-800' : 'bg-white/90 text-slate-600'}`}>
                 <p class="text-xs font-black uppercase tracking-wide">{st === 'next' ? '¡Te toca!' : st === 'locked' ? `🔒 Nivel ${idx + 1}` : `Nivel ${idx + 1}`}</p>
                 <p class="line-clamp-2 text-sm font-extrabold leading-tight">{n.activity_title}</p>
                 {st === 'done' && <p class="text-base leading-none" aria-label={`${stars} estrellas`}>{[0, 1, 2].map((k) => <span class={stars > k ? '' : 'opacity-25 grayscale'}>⭐</span>)}</p>}
