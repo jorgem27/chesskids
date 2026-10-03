@@ -2,12 +2,15 @@
 import CoachLayout from '../../../layouts/CoachLayout.astro';
 import { GAME_META, GAME_TYPES } from '../../../games/meta';
 import { coachClubs, VISIBLE_ACTIVITY_SQL } from '../../../lib/db';
+import { STARTER_VERSION } from '../../../lib/starter';
 const coach = Astro.locals.coach!;
 const db = Astro.locals.db;
 const clubs = await coachClubs(db, coach.id);
 const clubId = Number(Astro.url.searchParams.get('club')) || clubs[0]?.id;
 const filter = Astro.url.searchParams.get('tipo');
 const isAdmin = clubs.find((c) => c.id === clubId)?.role === 'admin';
+const starter = clubId ? await db.prepare('SELECT starter_version FROM clubs WHERE id = ?').bind(clubId).first<{ starter_version: number }>() : null;
+const offerStarter = isAdmin && (starter?.starter_version ?? 0) < STARTER_VERSION;
 const { results } = clubId
   ? await db.prepare(
       `SELECT a.id, a.type, a.title, a.description, a.content_json, a.xp_reward, a.updated_at, a.visibility, a.source_id, c.name AS author,
@@ -34,6 +37,18 @@ const count = (r: any) => { try { return GAME_META[r.type]?.count(JSON.parse(r.c
 
   {!clubId ? <p class="ck-card mt-6">Primero crea un club en <a href="/profe" class="font-bold text-brand-600">Mis clases</a>.</p> : (
     <>
+      {offerStarter && (
+        <form data-api="/api/coach/club-admin" class="ck-card mt-6 flex flex-wrap items-center gap-4 bg-gradient-to-r from-gold-50 to-white">
+          <input type="hidden" name="action" value="starter" /><input type="hidden" name="clubId" value={clubId} />
+          <span class="text-5xl" aria-hidden="true">📦</span>
+          <div class="min-w-0 flex-1">
+            <p class="font-display text-xl font-extrabold">Contenido inicial listo para usar</p>
+            <p class="text-sm text-slate-600">12 actividades (lecciones, problemas, frutas y un final contra el robot) y 3 mapas de aventura para peques, exploradores y maestros.</p>
+            <p data-error class="text-sm font-bold text-rose-600"></p>
+          </div>
+          <button type="submit" class="ck-btn ck-btn-primary">Añadir a la biblioteca</button>
+        </form>
+      )}
       <h2 class="mt-6 font-display text-xl font-extrabold">Crear nueva{isAdmin ? '' : ' (privada)'}</h2>
       <a href={`/profe/actividades/nueva?tipo=puzzle-hint&club=${clubId}&lichess=1`}
         class="mt-3 flex items-center gap-4 rounded-3xl bg-gradient-to-r from-amber-300 to-orange-400 p-5 text-amber-950 shadow-[0_6px_0_rgb(0_0_0/0.12)] transition hover:-translate-y-1">
