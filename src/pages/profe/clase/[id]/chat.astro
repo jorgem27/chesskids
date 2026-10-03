@@ -1,0 +1,16 @@
+---
+import CoachLayout from '../../../../layouts/CoachLayout.astro';
+import CoachChat from '../../../../components/chat/CoachChat';
+import { classPerm, type ClassRow } from '../../../../lib/db';
+
+const db = Astro.locals.db;
+const classId = Number(Astro.params.id);
+const perm = await classPerm(db, Astro.locals.coach!.id, classId);
+if (!perm || !(perm.is_owner || perm.can_view_progress || perm.can_manage_students)) return Astro.redirect('/profe');
+const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(classId).first<ClassRow>())!;
+---
+<CoachLayout title={`Chat · ${cls.name}`} wide>
+  <a href={`/profe/clase/${classId}`} class="text-sm font-bold text-brand-600 hover:underline">← {cls.emoji} {cls.name}</a>
+  <h1 class="mb-4 mt-2 font-display text-3xl font-extrabold">💬 Chat de {cls.name}</h1>
+  <CoachChat client:load classId={classId} />
+</CoachLayout>

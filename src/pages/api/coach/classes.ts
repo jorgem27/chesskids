@@ -47,6 +47,7 @@ export const DELETE: APIRoute = async ({ locals, request }) => {
   if (bad) return json({ error: bad }, 403);
   await db.batch([
     ...eraseStudentsStatements(db, 'class_id = ?', classId),
+    db.prepare('DELETE FROM messages WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM projector_sessions WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM assignments WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM class_permissions WHERE class_id = ?').bind(classId),

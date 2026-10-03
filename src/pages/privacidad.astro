@@ -1,6 +1,7 @@
 ---
 import LegalLayout from '../layouts/LegalLayout.astro';
 import { LEGAL, legalField, RETENTION_MONTHS } from '../lib/legal';
+import { RETENTION_DAYS as CHAT_RETENTION_DAYS } from '../lib/chat';
 ---
 <LegalLayout title="Política de privacidad">
   <h1>Política de privacidad</h1>
@@ -33,7 +34,7 @@ import { LEGAL, legalField, RETENTION_MONTHS } from '../lib/legal';
     <tbody>
       <tr>
         <td>Alumnos</td>
-        <td>Nombre o apodo, avatar (un animal), grupo de edad, nombre de usuario, contraseña y dibujos secretos (guardados cifrados), resultados de juegos y problemas, tiempo de aprendizaje, racha, puntos, cromos y mascota.</td>
+        <td>Nombre o apodo, avatar (un animal), grupo de edad, nombre de usuario, contraseña y dibujos secretos (guardados cifrados), resultados de juegos y problemas, tiempo de aprendizaje, racha, puntos, cromos y mascota. Si el profe activa el chat de la clase, los mensajes que escribe (solo texto, problemas y partidas de ajedrez).</td>
         <td>Que el alumno pueda entrar, jugar y ver su progreso, y que su profe pueda seguirlo y prepararle actividades.</td>
       </tr>
       <tr>
@@ -58,6 +59,7 @@ import { LEGAL, legalField, RETENTION_MONTHS } from '../lib/legal';
   <ul>
     <li>El alumno ve su propio progreso. Sus compañeros de clase solo ven su nombre, su animal y sus puntos en la liga de la clase.</li>
     <li>Los profes de la clase, según los permisos que les dé el profe responsable, y los administradores del club.</li>
+    <li><b>Chat de la clase:</b> los mensajes los ven los compañeros a quienes van dirigidos (toda la clase o uno en privado) y <b>también los profes de la clase, incluidos los privados</b>. No están cifrados de extremo a extremo, y la app lo avisa siempre en el chat. No se pueden enviar imágenes, stickers ni enlaces, y se quitan los teléfonos y correos. El profe puede apagar el chat u ocultar mensajes.</li>
     <li>La familia, si el profe le envía el enlace de solo lectura del informe de progreso. Quien tenga ese enlace puede ver el informe, así que no lo compartas; el profe puede anularlo en cualquier momento.</li>
   </ul>
 
@@ -70,6 +72,7 @@ import { LEGAL, legalField, RETENTION_MONTHS } from '../lib/legal';
 
   <h2>6. Cuánto tiempo guardamos los datos</h2>
   <p>Mientras el alumno o el profe sigan en el club. Cuando un alumno deja el club, su profe puede borrarlo y se eliminan su cuenta y todo su progreso. Recomendamos a los clubs borrar a los alumnos que lleven más de {RETENTION_MONTHS} meses sin actividad.</p>
+  <p>Los mensajes del chat se borran automáticamente a los {CHAT_RETENTION_DAYS} días.</p>
 
   <h2>7. Tus derechos</h2>
   <p>Puedes pedir el acceso, la rectificación, la supresión, la portabilidad, la limitación u oponerte al tratamiento, y retirar el consentimiento en cualquier momento, escribiendo a {legalField(LEGAL.email)} o hablando con el profe. El profe puede descargar todos los datos del alumno en un archivo y borrarlos por completo desde la plataforma.</p>

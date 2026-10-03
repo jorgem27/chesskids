@@ -13,7 +13,7 @@ export interface StudentRow {
   family_token: string | null; // read-only family report link
 }
 
-export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string; weekly_goal: number }
+export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string; weekly_goal: number; chat_mode: string }
 
 export interface ActivityRow {
   id: number; club_id: number; type: string; title: string; description: string;

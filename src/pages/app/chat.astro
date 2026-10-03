@@ -1,0 +1,10 @@
+---
+import StudentLayout from '../../layouts/StudentLayout.astro';
+import StudentChat from '../../components/chat/StudentChat';
+
+const s = Astro.locals.student!;
+---
+<StudentLayout title="Chat · Odisea Miranda">
+  <h1 class="mb-3 flex items-center gap-2 font-display text-3xl font-extrabold text-slate-800"><span aria-hidden="true">💬</span> Chat</h1>
+  <StudentChat client:load studentId={s.id} />
+</StudentLayout>

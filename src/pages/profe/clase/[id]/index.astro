@@ -16,6 +16,7 @@ const id = Number(Astro.params.id);
 const perm = await classPerm(db, coach.id, id);
 if (!perm) return Astro.redirect('/profe');
 const cls = (await db.prepare('SELECT * FROM classes WHERE id = ?').bind(id).first<ClassRow>())!;
+const chatFlagged = (await db.prepare('SELECT COUNT(*) AS n FROM messages WHERE class_id = ? AND flagged > 0').bind(id).first<{ n: number }>())?.n ?? 0;
 const canManage = !!(perm.is_owner || perm.can_manage_students);
 const canCreate = !!(perm.is_owner || perm.can_create_content);
 const canView = !!(perm.is_owner || perm.can_view_progress);
@@ -149,6 +150,7 @@ const fmtTime = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.flo
       <h1 class="font-display text-3xl font-extrabold">{cls.name}</h1>
       <p class="text-sm text-slate-500">Código <b class="font-mono text-brand-700">{cls.code}</b> · {students.length} alumnos</p>
     </div>
+    <a href={`/profe/clase/${id}/chat`} class="ck-btn ck-btn-green">💬 Chat{chatFlagged > 0 && <span class="ml-1 rounded-full bg-amber-300 px-2 text-sm text-amber-950" title="Mensajes para revisar">🚩 {chatFlagged}</span>}</a>
     <a href={`/profe/clase/${id}/leccion`} class="ck-btn ck-btn-primary">🎲 Lección con dado</a>
     <a href={`/profe/clase/${id}/proyector`} class="ck-btn ck-btn-orange">📽️ Modo proyector</a>
   </div>

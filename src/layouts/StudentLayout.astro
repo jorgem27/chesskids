@@ -5,18 +5,23 @@ import Settings from '../components/student/Settings';
 import { levelFromXp } from '../lib/rewards';
 import { today } from '../lib/db';
 import { addDays } from '../lib/dates';
+import { unreadTotalQuery } from '../lib/chatServer';
 interface Props { title?: string }
 const { title = 'Odisea Miranda' } = Astro.props;
 const s = Astro.locals.student!;
 const path = Astro.url.pathname;
 const streak = s.last_active_day && s.last_active_day >= addDays(today(), -1) ? s.streak : 0;
+const chat = await unreadTotalQuery(Astro.locals.db, s.id, s.class_id).first<{ chat_mode: string; unread: number }>();
+const chatUnread = chat?.unread ?? 0;
 const tabs = [
   { href: '/app', icon: '🏠', label: 'Inicio', active: path === '/app' || path === '/app/' },
   { href: '/app/progreso', icon: '📊', label: 'Progreso', active: path.startsWith('/app/progreso') },
   { href: '/app/mapa', icon: '🗺️', label: 'Mapa', active: path.startsWith('/app/mapa') },
   { href: '/app/album', icon: '📒', label: 'Álbum', active: path.startsWith('/app/album') },
   { href: '/app/mascota', icon: '🐲', label: 'Mascota', active: path.startsWith('/app/mascota') },
-];
+  ...(chat?.chat_mode !== 'off' ? [{ href: '/app/chat', icon: '💬', label: 'Chat', active: path.startsWith('/app/chat'), badge: chatUnread }] : []),
+] as { href: string; icon: string; label: string; active: boolean; badge?: number }[];
+const badgeLabel = (n: number) => (n > 99 ? '99+' : String(n));
 ---
 <Base title={title} age={s.age_group}>
   <div class="min-h-dvh bg-gradient-to-b from-brand-50 via-[#f3f5fa] to-gold-50 pb-28 md:pb-10">
@@ -28,6 +33,7 @@ const tabs = [
             <a href={t.href} aria-current={t.active ? 'page' : undefined}
               class={`inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-bold transition ${t.active ? 'bg-gold-400 text-brand-950' : 'text-brand-100 hover:bg-white/10'}`}>
               <span aria-hidden="true">{t.icon}</span> {t.label}
+              {!!t.badge && <span class="rounded-full bg-rose-500 px-1.5 text-xs font-extrabold text-white" aria-label={`${t.badge} sin leer`}>{badgeLabel(t.badge)}</span>}
             </a>
           ))}
         </nav>
@@ -45,8 +51,9 @@ const tabs = [
       <div class="mx-auto flex max-w-lg items-stretch justify-around px-1 py-1.5">
         {tabs.map((t) => (
           <a href={t.href} aria-current={t.active ? 'page' : undefined}
-            class={`flex min-h-12 min-w-14 flex-1 flex-col items-center justify-center rounded-2xl py-1 font-display font-bold ${t.active ? 'bg-brand-800 text-gold-200 shadow-[0_4px_0_#0b1631]' : 'text-slate-600'}`}>
+            class={`relative flex min-h-12 min-w-12 flex-1 flex-col items-center justify-center rounded-2xl py-1 font-display font-bold ${t.active ? 'bg-brand-800 text-gold-200 shadow-[0_4px_0_#0b1631]' : 'text-slate-600'}`}>
             <span class="text-2xl leading-none" aria-hidden="true">{t.icon}</span><span class="mt-0.5 text-xs">{t.label}</span>
+            {!!t.badge && <span class="absolute right-1 top-0.5 rounded-full bg-rose-500 px-1.5 text-[11px] font-extrabold leading-4 text-white" aria-label={`${t.badge} sin leer`}>{badgeLabel(t.badge)}</span>}
           </a>
         ))}
       </div>
