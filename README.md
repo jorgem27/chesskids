@@ -26,7 +26,7 @@ npm run dev
 Then open **http://localhost:4321**.
 
 ### 🚀 Pushing Changes and Database:
-- **Windows script**: Double-click `push.bat` (or run `.\push.bat your commit message here without quotes`). It will commit and push all code changes to `main`, apply database migrations to remote Cloudflare D1 (`npm run db:migrate:remote`), and optionally deploy the site.
+- **One command**: `npm run push -- "your commit message"` commits and pushes all changes to `main` and applies database migrations to remote Cloudflare D1. Add `npm run deploy` (or use `npm run push:deploy`) to also deploy the site.
 - **npm shortcut**: Run `npm run push` (or `npm run push:deploy`).
 
 ### Demo accounts

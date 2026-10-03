@@ -27,7 +27,7 @@ The output lands in `seed/lichess/*.sql`, which is gitignored. The first file em
 
 ## Production
 
-This writes about 540k rows to the production D1. Apply migration 0006 first (`push.bat` does it), then run:
+This writes about 540k rows to the production D1. Apply migration 0006 first (`npm run push` does it), then run:
 
 ```bash
 npm run puzzles:load -- --remote

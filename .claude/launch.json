@@ -9,6 +9,17 @@
         "dev"
       ],
       "port": 4321
+    },
+    {
+      "name": "preview-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "astro",
+        "preview",
+        "--port",
+        "4323"
+      ],
+      "port": 4323
     }
   ]
 }

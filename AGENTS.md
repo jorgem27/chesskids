@@ -19,12 +19,14 @@ Gamified chess-learning platform for kids (5–15), modeled after Duolingo: cont
 | `npm test` | Unit tests in `tests/` (`tsx --test`) |
 | `npm run db:migrate` / `db:migrate:remote` | Apply migrations to local / **production** D1 |
 | `npm run deploy` | Build and deploy to Cloudflare. Production; only when asked |
-| `push.bat "message"` | One-step publish (see below) |
+| `npm run push -- "message"` | One-step publish: commit, push, remote migrations (see below) |
 
 ## Layout
 
 - `src/games/` – one folder per game type (`puzzle`, `pgn`, `fruit`, `bot`, `pdf`), plus `meta.ts` (metadata/validation), `registry.ts` (UI registration), `rules.ts`, `types.ts` (the `GameApi` contract).
 - `src/lib/` – server/shared logic: `auth.ts`, `rewards.ts` (XP, levels, streaks, stickers, practice XP, tactics rating), `activities.ts`, `db.ts`, `catalog.ts`, `campaigns.ts` (adventure maps + rewards), `practice.ts` (Repaso / Problema del día / Entrena), `insights.ts` (per-item coach reports), `progress.ts` (shared sticker/reward tail), `outbox.ts` (offline result queue).
+  Also: `clubs.ts` (invites, club admin checks), `privacy.ts` (GDPR export / erasure), `family.ts` (family report + WhatsApp summary), `report.ts` (class CSV / printable report), `seasons.ts` (term seasons, resettable ranking, season badges), `starter.ts` (starter content pack, validated in `tests/starter.test.ts`), `a11y.ts` (per-device accessibility settings), `push.ts` (opt-in streak reminders, VAPID), `mail.ts` (optional Resend email), `legal.ts` (data shown on `/privacidad` and `/aviso-legal`).
+- `src/worker.ts` – Worker entry (`main` in `wrangler.jsonc`): Astro's handler plus the daily cron that sends streak reminders.
 - `src/pages/` – `profe/` (coach panel), `app/` (student dashboard), `entrar` + `u/` + `c/` (student login/links), `api/` (endpoints). `src/middleware.ts` holds the route guards.
 - `src/components/` – `coach/`, `student/`, `game/`, `projector/`, `ui/`.
 - `tests/` – chess and game-logic tests. Add a test for every new solver, validator or reward rule.
@@ -59,18 +61,26 @@ To add a new game type, use the `add-game-mode` skill (metadata in `meta.ts` →
 - **Authorization lives on the server.** Check the coach's role/permission (`class_permissions`, `club_coaches`) in each `/api/coach/*` handler. The middleware only checks that a coach is logged in.
 - **Kids' data is sensitive.** Store no more personal data than needed, never log passwords/tokens/login codes, keep PBKDF2 hashing and the login lockout, and don't add third-party trackers or external requests from student pages.
 - **Database changes go in a new numbered file in `migrations/`.** Never edit an applied migration. Test locally with `npm run db:migrate` first.
-- **Production is off-limits unless asked.** Do not run `db:migrate:remote`, `wrangler deploy`, or any `wrangler d1 execute --remote` on your own; the only sanctioned route is `push.bat`, and only when I ask to push/publish. The scripts in `scripts/oneoff/` (`dump_db.js`, `fix_db.js`, `apply_fix.js`, `find_jorge.js`, `fix_remote.sql`, `remote_seeds.sql`) are one-off maintenance tools that may touch real data; read them before running and don't extend them.
+- **Production is off-limits unless asked.** Do not run `db:migrate:remote`, `wrangler deploy`, or any `wrangler d1 execute --remote` on your own; the only sanctioned route is `npm run push`, and only when I ask to push/publish. The scripts in `scripts/oneoff/` (`dump_db.js`, `fix_db.js`, `apply_fix.js`, `find_jorge.js`, `fix_remote.sql`, `remote_seeds.sql`) are one-off maintenance tools that may touch real data; read them before running and don't extend them.
 - **Performance budget.** Student pages run on cheap phones: keep islands small, load Stockfish/PDF/board code only on the pages that use it, and avoid N+1 D1 queries (batch with `db.batch`).
 - **All user-visible text is Spanish**, in a friendly tone for kids. Code, comments and docs are English.
 - Verify UI changes in the running app (`npm run dev`) and finish with `npm run check` and `npm test`.
 
-## Publishing changes (`push.bat`)
+## Access, privacy and optional services
 
-When I ask to push or publish, run `push.bat "commit message"` from the repo root (Windows). One command does everything: `git add -A`, commit with that message, `git push origin main`, then `npm run db:migrate:remote` (applies new migrations to the **production** D1), and finally asks whether to deploy to Cloudflare.
+- **Coach sign-up is closed.** A coach registers with an invitation code created by a club admin (`/profe/club/<id>`), or creates a new club with the platform code `SIGNUP_CODE` (`wrangler secret put SIGNUP_CODE`). Only the very first account of an empty database needs neither.
+- **Password recovery:** club admins create one-time reset links for their coaches in the club panel. To also let coaches ask by email, set `RESEND_API_KEY` (secret) and `MAIL_FROM` (var).
+- **Parental consent** is required to create students (`students.consent_at`). Coaches can export (`GET /api/coach/students/<id>`) and erase all of a student's data. Keep `src/lib/privacy.ts` in sync when a new table stores student data.
+- **Streak reminders** are opt-in and off by default. They need `VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` (vars) and `VAPID_PRIVATE_KEY` (secret): generate them with `npm run push:keys`. Without them the toggle is hidden.
+- Fill in the controller's details in `src/lib/legal.ts` before publishing.
 
-- The commit message is the only input: pass it as the argument (no extra quoting needed). Write a short, descriptive message; don't run separate `git add/commit/push` first.
+## Publishing changes (`npm run push`)
+
+When I ask to push or publish, run `npm run push -- "commit message"` from the repo root. It does `git add -A`, commits with that message, `git push origin main`, then `npm run db:migrate:remote` (applies new migrations to the **production** D1). It does not deploy: deploying is a separate `npm run deploy`, or `npm run push:deploy` for both.
+
+- The commit message is the only input. Write a short, descriptive message; don't run separate `git add/commit/push` first.
 - Before running it, make sure `npm run check` and `npm test` pass and tell me if there are new files in `migrations/`, since they will hit production.
-- The script ends with interactive prompts (deploy y/N, `pause`). Run it in the terminal pane or ask me to answer the prompt; don't answer "y" to the deploy question unless I asked to deploy.
+- Only deploy when I ask for it.
 
 ## Assets
 
