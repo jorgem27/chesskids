@@ -1,7 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
-import { readSession, SESSION_COOKIE } from './lib/auth';
-import type { CoachRow, StudentRow } from './lib/db';
+import { readSessionUser, SESSION_COOKIE } from './lib/auth';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   const db = (env as Env).DB;
@@ -10,19 +9,18 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   ctx.locals.student = null;
 
   const path = ctx.url.pathname;
-  const isAsset = path.startsWith('/_astro') || path.startsWith('/favicon');
-  if (db && !isAsset) {
-    const s = await readSession(db, ctx.cookies.get(SESSION_COOKIE)?.value);
-    if (s?.user_type === 'coach') {
-      ctx.locals.coach = await db.prepare('SELECT id, email, name FROM coaches WHERE id = ?').bind(s.user_id).first<CoachRow>();
-    } else if (s?.user_type === 'student') {
-      ctx.locals.student = await db.prepare('SELECT * FROM students WHERE id = ? AND archived = 0').bind(s.user_id).first<StudentRow>();
-    }
+  // Assets and the legal / family pages never need the user: skip the session lookup there.
+  const skipSession = ['/_astro', '/favicon', '/privacidad', '/aviso-legal', '/familia'].some((p) => path.startsWith(p));
+  if (db && !skipSession) {
+    const { coach, student } = await readSessionUser(db, ctx.cookies.get(SESSION_COOKIE)?.value);
+    ctx.locals.coach = coach;
+    ctx.locals.student = student;
   }
 
   // Route guards
   if (path.startsWith('/app') && !ctx.locals.student) return ctx.redirect('/entrar');
-  if (path.startsWith('/profe') && !path.startsWith('/profe/login') && !path.startsWith('/profe/registro') && !ctx.locals.coach) {
+  const publicCoachPage = ['/profe/login', '/profe/registro', '/profe/recuperar', '/profe/restablecer'].some((p) => path.startsWith(p));
+  if (path.startsWith('/profe') && !publicCoachPage && !ctx.locals.coach) {
     return ctx.redirect('/profe/login');
   }
   if (path.startsWith('/api/coach') && !ctx.locals.coach) {

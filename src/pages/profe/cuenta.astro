@@ -1,0 +1,23 @@
+---
+import CoachLayout from '../../layouts/CoachLayout.astro';
+const coach = Astro.locals.coach!;
+---
+<CoachLayout title="Mi cuenta">
+  <h1 class="font-display text-3xl font-extrabold">👤 Mi cuenta</h1>
+  <p class="text-slate-500">{coach.email}</p>
+  <div class="mt-6 grid gap-6 md:grid-cols-2">
+    <form data-api="/api/auth/coach-account" data-method="PATCH" class="ck-card space-y-3">
+      <h2 class="font-display text-xl font-extrabold">Tu nombre</h2>
+      <input name="name" value={coach.name} maxlength="60" required class="ck-input w-full" aria-label="Tu nombre" />
+      <p data-error class="text-sm font-bold text-rose-600"></p>
+      <button type="submit" class="ck-btn ck-btn-primary">Guardar</button>
+    </form>
+    <form data-api="/api/auth/coach-account" data-method="PATCH" class="ck-card space-y-3">
+      <h2 class="font-display text-xl font-extrabold">🔐 Cambiar contraseña</h2>
+      <input name="current" type="password" required placeholder="Contraseña actual" class="ck-input w-full" autocomplete="current-password" />
+      <input name="password" type="password" required minlength="8" placeholder="Nueva contraseña (mín. 8)" class="ck-input w-full" autocomplete="new-password" />
+      <p data-error class="text-sm font-bold text-rose-600"></p>
+      <button type="submit" class="ck-btn ck-btn-primary">Cambiar contraseña</button>
+    </form>
+  </div>
+</CoachLayout>

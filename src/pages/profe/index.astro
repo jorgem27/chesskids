@@ -4,7 +4,27 @@ import { coachClasses, coachClubs } from '../../lib/db';
 import { CLASS_COLOR_PRESETS, DEFAULT_CLASS_COLOR, classGradient } from '../../lib/catalog';
 const coach = Astro.locals.coach!;
 const db = Astro.locals.db;
-const [clubs, classes] = await Promise.all([coachClubs(db, coach.id), coachClasses(db, coach.id)]);
+const [clubs, classes, usage] = await Promise.all([
+  coachClubs(db, coach.id),
+  coachClasses(db, coach.id),
+  db.prepare(
+    `SELECT EXISTS (SELECT 1 FROM assignments x JOIN class_permissions p ON p.class_id = x.class_id WHERE p.coach_id = ?1) AS missions,
+       EXISTS (SELECT 1 FROM class_campaigns cc JOIN class_permissions p ON p.class_id = cc.class_id WHERE p.coach_id = ?1) AS maps,
+       EXISTS (SELECT 1 FROM students s JOIN class_permissions p ON p.class_id = s.class_id WHERE p.coach_id = ?1 AND s.family_token IS NOT NULL) AS families`,
+  ).bind(coach.id).first<{ missions: number; maps: number; families: number }>(),
+]);
+// "Primeros pasos" checklist for new coaches: hidden once the four core steps are done.
+const first = classes.find((c) => c.is_owner) ?? classes[0];
+const steps = [
+  { done: clubs.length > 0, icon: '🏛️', label: 'Ten tu club', hint: 'Créalo abajo o pide una invitación a tu club', href: '#nuevo-club' },
+  { done: classes.length > 0, icon: '🏫', label: 'Crea tu clase', hint: 'Un grupo de 6 a 10 alumnos', href: '#nueva-clase' },
+  { done: classes.some((c) => c.student_count > 0), icon: '👧', label: 'Añade a tus alumnos', hint: 'Con el permiso de sus familias', href: first ? `/profe/clase/${first.id}?tab=alumnos` : '#nueva-clase' },
+  { done: !!usage?.missions, icon: '🎒', label: 'Asigna tu primera misión', hint: 'Ya tienes lecciones listas en la biblioteca', href: first ? `/profe/clase/${first.id}?tab=deberes` : '#nueva-clase' },
+  { done: !!usage?.maps, icon: '🗺️', label: 'Pon un mapa de aventura', hint: 'Opcional: un camino de retos con premio', href: '/profe/campanas' },
+  { done: !!usage?.families, icon: '👪', label: 'Envía un informe a las familias', hint: 'Opcional: su progreso por WhatsApp', href: first ? `/profe/clase/${first.id}?tab=alumnos` : '#nueva-clase' },
+];
+const showSteps = !steps.slice(0, 4).every((x) => x.done);
+const nextStep = steps.findIndex((x) => !x.done);
 const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐', '🌈'];
 ---
 <CoachLayout title="Mis clases">
@@ -14,6 +34,27 @@ const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐'
       <p class="text-slate-500">Tus clases y las que otros profes han compartido contigo.</p>
     </div>
   </div>
+
+  {showSteps && (
+    <section class="ck-card mt-6 bg-gradient-to-br from-gold-50 to-white">
+      <h2 class="font-display text-xl font-extrabold">🚀 Primeros pasos</h2>
+      <p class="text-sm text-slate-500">{steps.filter((x) => x.done).length} de {steps.length} hechos. ¡En 5 minutos tienes tu clase en marcha!</p>
+      <ol class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {steps.map((x, i) => (
+          <li>
+            <a href={x.href} class={`flex min-h-16 items-center gap-3 rounded-2xl p-3 transition ${x.done ? 'bg-emerald-50' : i === nextStep ? 'bg-white ring-2 ring-gold-400 shadow' : 'bg-white ring-1 ring-slate-200'}`}>
+              <span class="text-2xl" aria-hidden="true">{x.done ? '✅' : x.icon}</span>
+              <span class="min-w-0 flex-1">
+                <span class={`block font-bold ${x.done ? 'text-emerald-800 line-through decoration-2' : ''}`}>{i + 1}. {x.label}</span>
+                <span class="block text-xs text-slate-500">{x.hint}</span>
+              </span>
+              {i === nextStep && <span class="rounded-full bg-gold-400 px-2 py-0.5 text-xs font-extrabold text-brand-950">Ahora</span>}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
 
   <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {classes.map((c) => (
@@ -37,7 +78,7 @@ const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐'
 
   <div class="mt-8 grid gap-6 lg:grid-cols-2">
     {clubs.length > 0 && (
-      <form data-api="/api/coach/classes" data-redirect="/profe/clase/:id" class="ck-card space-y-3">
+      <form id="nueva-clase" data-api="/api/coach/classes" data-redirect="/profe/clase/:id" class="ck-card space-y-3">
         <h2 class="font-display text-xl font-extrabold">➕ Nueva clase</h2>
         <input name="name" required placeholder="Nombre (ej: Peques martes 17:00)" class="ck-input w-full" />
         <div class="grid grid-cols-2 gap-2">
@@ -57,13 +98,13 @@ const emojis = ['♞', '♛', '♜', '♝', '♚', '🦁', '🐉', '🚀', '⭐'
         <button type="submit" class="ck-btn ck-btn-primary">Crear clase</button>
       </form>
     )}
-    <form data-api="/api/coach/clubs" class="ck-card space-y-3">
+    {clubs.some((c) => c.role === 'admin') && <form id="nuevo-club" data-api="/api/coach/clubs" class="ck-card space-y-3">
       <h2 class="font-display text-xl font-extrabold">🏛️ {clubs.length ? 'Otro club' : 'Crea tu club'}</h2>
       <p class="text-sm text-slate-500">Tus clubs: {clubs.map((c) => c.name).join(', ') || 'ninguno todavía'}.</p>
       <input name="name" required placeholder="Nombre del club" class="ck-input w-full" />
       <p data-error class="text-sm font-bold text-rose-600"></p>
       <button type="submit" class="ck-btn-sm">Crear club</button>
-    </form>
+    </form>}
   </div>
   <script>
     document.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((b) =>

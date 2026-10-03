@@ -1,0 +1,36 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL, legalField } from '../lib/legal';
+---
+<LegalLayout title="Aviso legal">
+  <h1>Aviso legal</h1>
+  <p class="text-sm text-slate-500">Última actualización: {LEGAL.updated}</p>
+
+  <h2>Titular</h2>
+  <p>{LEGAL.site} es una herramienta gratuita y complementaria a las clases de ajedrez, para practicar y hacer los deberes. No se vende ni se cobra por su uso.</p>
+  <ul>
+    <li>Titular: {legalField(LEGAL.owner)}</li>
+    {LEGAL.taxId && <li>NIF/CIF: {LEGAL.taxId}</li>}
+    {LEGAL.address && <li>Domicilio: {LEGAL.address}</li>}
+    <li>Email de contacto: {legalField(LEGAL.email)}</li>
+  </ul>
+
+  <h2>Objeto</h2>
+  <p>{LEGAL.site} es una plataforma educativa para aprender ajedrez jugando, pensada para alumnos de clubs y escuelas de ajedrez y para sus profes. El acceso de los alumnos lo da su profe; no hay registro abierto.</p>
+
+  <h2>Uso</h2>
+  <ul>
+    <li>Los profes se comprometen a dar de alta a los alumnos solo con el consentimiento de sus familias y a no introducir más datos personales de los necesarios.</li>
+    <li>Los contenidos que crean los profes (lecciones, problemas, mapas) son responsabilidad de quien los crea.</li>
+    <li>Está prohibido intentar acceder a cuentas ajenas o a datos de otros clubs.</li>
+  </ul>
+
+  <h2>Propiedad intelectual</h2>
+  <p>El diseño, los textos y las ilustraciones de la plataforma pertenecen a su titular. Los problemas de la base de datos de Lichess se publican con licencia CC0. El motor Stockfish se distribuye con licencia GPLv3.</p>
+
+  <h2>Privacidad y cookies</h2>
+  <p>Solo usamos una cookie técnica de sesión, necesaria para entrar, y ninguna de análisis ni de publicidad. Los detalles sobre los datos personales están en la <a href="/privacidad" class="font-bold text-brand-700">política de privacidad</a>.</p>
+
+  <h2>Legislación aplicable</h2>
+  <p>Este aviso se rige por la legislación española.</p>
+</LegalLayout>

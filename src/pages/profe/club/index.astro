@@ -1,0 +1,5 @@
+---
+import { coachClubs } from '../../../lib/db';
+const admin = (await coachClubs(Astro.locals.db, Astro.locals.coach!.id)).find((c) => c.role === 'admin');
+return Astro.redirect(admin ? `/profe/club/${admin.id}` : '/profe');
+---

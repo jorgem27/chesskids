@@ -5,10 +5,13 @@ interface Props { title: string; wide?: boolean }
 const { title, wide = false } = Astro.props;
 const coach = Astro.locals.coach;
 const path = Astro.url.pathname;
+// Club admins get the club panel in the menu (one small indexed lookup per coach page).
+const isAdmin = coach ? !!(await Astro.locals.db.prepare("SELECT 1 FROM club_coaches WHERE coach_id = ? AND role = 'admin' LIMIT 1").bind(coach.id).first()) : false;
 const nav = [
   { href: '/profe', label: '🏫 Mis clases', active: path === '/profe' || path.startsWith('/profe/clase') },
   { href: '/profe/actividades', label: '🧩 Actividades', active: path.startsWith('/profe/actividades') },
   { href: '/profe/campanas', label: '🗺️ Campañas', active: path.startsWith('/profe/campanas') },
+  ...(isAdmin ? [{ href: '/profe/club', label: '🏛️ Mi club', active: path.startsWith('/profe/club') }] : []),
 ];
 ---
 <Base title={`${title} · Odisea Miranda`}>
@@ -20,7 +23,8 @@ const nav = [
           {nav.map((n) => <a href={n.href} aria-current={n.active ? 'page' : undefined} class={`inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold transition ${n.active ? 'bg-gold-400 text-brand-950' : 'text-brand-100 hover:bg-white/10'}`}>{n.label}</a>)}
         </nav>
         <div class="ml-auto flex items-center gap-3 text-sm">
-          <span class="hidden font-bold text-brand-100 sm:inline">{coach?.name}</span>
+          <a href="/profe/cuenta" class="hidden min-h-11 items-center rounded-xl px-2 font-bold text-brand-100 hover:bg-white/10 sm:inline-flex" title="Mi cuenta">👤 {coach?.name}</a>
+          <a href="/profe/cuenta" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-brand-100 hover:bg-white/10 sm:hidden" aria-label="Mi cuenta">👤</a>
           <form method="post" action="/api/auth/logout?to=profe"><button class="ck-btn-sm !bg-white/10 !text-white hover:!bg-white/20">Salir</button></form>
         </div>
       </div>

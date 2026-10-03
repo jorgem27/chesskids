@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+// The token travels in the URL fragment (#t=…), so it never reaches server logs or Referer headers.
+---
+<Base title="Nueva contraseña · Odisea Miranda" noindex>
+  <div class="om-night flex min-h-dvh flex-col items-center justify-center gap-5 p-4">
+    <a href="/" class="flex flex-col items-center gap-2"><img src="/brand/logo-192.webp" width="88" height="88" alt="" class="om-logo" /><span class="font-brand text-2xl font-bold om-gold-text">Odisea Miranda</span></a>
+    <form id="reset" class="ck-card w-full max-w-sm space-y-3 text-slate-800">
+      <h1 class="font-display text-3xl font-extrabold text-brand-800">🔐 Elige tu nueva contraseña</h1>
+      <input name="password" type="password" required minlength="8" placeholder="Nueva contraseña (mín. 8)" class="ck-input w-full" autocomplete="new-password" />
+      <input name="repeat" type="password" required minlength="8" placeholder="Repítela" class="ck-input w-full" autocomplete="new-password" />
+      <p data-error class="text-sm font-bold text-rose-600"></p>
+      <button type="submit" class="ck-btn ck-btn-primary w-full">Guardar y entrar</button>
+      <p class="text-xs text-slate-500">Al cambiarla se cierra tu sesión en los demás dispositivos.</p>
+    </form>
+  </div>
+  <script>
+    const form = document.getElementById('reset') as HTMLFormElement;
+    const token = new URLSearchParams(location.hash.slice(1)).get('t') ?? '';
+    const err = form.querySelector<HTMLElement>('[data-error]')!;
+    if (!token) err.textContent = 'Falta el código del enlace. Ábrelo de nuevo desde el mensaje que recibiste.';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      err.textContent = '';
+      if (fd.get('password') !== fd.get('repeat')) { err.textContent = 'Las dos contraseñas no coinciden'; return; }
+      const btn = form.querySelector<HTMLButtonElement>('button')!;
+      btn.disabled = true;
+      const res = await fetch('/api/auth/reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, password: fd.get('password') }) });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) { err.textContent = body.error ?? 'Algo ha fallado'; btn.disabled = false; return; }
+      history.replaceState(null, '', '/profe/restablecer');
+      location.href = '/profe';
+    });
+  </script>
+</Base>

@@ -1,0 +1,266 @@
+---
+import CoachLayout from '../../../layouts/CoachLayout.astro';
+import { coachClubs, today } from '../../../lib/db';
+import { addDays, relativeDay, shortDate } from '../../../lib/dates';
+import { weekStart } from '../../../lib/rewards';
+import { STARTER_VERSION } from '../../../lib/starter';
+import { mailEnabled } from '../../../lib/mail';
+
+const coach = Astro.locals.coach!;
+const db = Astro.locals.db;
+const clubId = Number(Astro.params.id);
+const clubs = await coachClubs(db, coach.id);
+const adminClubs = clubs.filter((c) => c.role === 'admin');
+if (!adminClubs.some((c) => c.id === clubId)) return Astro.redirect('/profe');
+
+const t = today();
+const d7 = addDays(t, -6);
+const WEEKS = 8;
+const since = addDays(weekStart(new Date(t + 'T12:00:00Z')), -7 * (WEEKS - 1));
+const kids = 'SELECT s.id FROM students s JOIN classes c ON c.id = s.class_id WHERE c.club_id = ? AND s.archived = 0';
+const [clubRes, classesRes, coachesRes, invitesRes, weeksRes] = await db.batch<any>([
+  db.prepare('SELECT id, name, starter_version FROM clubs WHERE id = ?').bind(clubId),
+  db.prepare(
+    `SELECT cl.id, cl.name, cl.emoji, cl.code,
+       (SELECT c.name FROM class_permissions p JOIN coaches c ON c.id = p.coach_id WHERE p.class_id = cl.id AND p.is_owner = 1 LIMIT 1) AS owner,
+       (SELECT COUNT(*) FROM students s WHERE s.class_id = cl.id AND s.archived = 0) AS students,
+       (SELECT COUNT(*) FROM students s WHERE s.class_id = cl.id AND s.archived = 0 AND s.last_active_day >= ?) AS active7,
+       (SELECT MAX(s.last_active_day) FROM students s WHERE s.class_id = cl.id AND s.archived = 0) AS last_day,
+       (SELECT COALESCE(SUM(s.puzzles_solved), 0) FROM students s WHERE s.class_id = cl.id AND s.archived = 0) AS solved,
+       (SELECT COUNT(*) FROM assignments x WHERE x.class_id = cl.id AND x.starts_on >= ?) AS missions30,
+       EXISTS (SELECT 1 FROM class_permissions p WHERE p.class_id = cl.id AND p.coach_id = ?) AS mine
+     FROM classes cl WHERE cl.club_id = ? ORDER BY cl.name`,
+  ).bind(d7, addDays(t, -30), coach.id, clubId),
+  db.prepare(
+    `SELECT c.id, c.name, c.email, cc.role,
+       (SELECT COUNT(*) FROM class_permissions p JOIN classes cl ON cl.id = p.class_id WHERE p.coach_id = c.id AND p.is_owner = 1 AND cl.club_id = ?) AS owned
+     FROM club_coaches cc JOIN coaches c ON c.id = cc.coach_id WHERE cc.club_id = ? ORDER BY cc.role, c.name`,
+  ).bind(clubId, clubId),
+  db.prepare(
+    `SELECT id, role, note, max_uses, uses, expires_at FROM club_invites
+     WHERE club_id = ? AND revoked = 0 AND expires_at > unixepoch() AND uses < max_uses ORDER BY id DESC LIMIT 20`,
+  ).bind(clubId),
+  db.prepare(
+    `SELECT date(day, 'weekday 0', '-6 days') AS wk, SUM(xp) AS xp, SUM(solved) AS solved, COUNT(DISTINCT sid) AS kids FROM (
+       SELECT at.day, at.xp_earned AS xp, at.puzzles_solved AS solved, at.student_id AS sid FROM attempts at WHERE at.student_id IN (${kids}) AND at.day >= ?
+       UNION ALL SELECT ps.day, ps.xp_earned, ps.solved, ps.student_id FROM practice_sessions ps WHERE ps.student_id IN (${kids}) AND ps.day >= ? AND ps.finished_at IS NOT NULL
+       UNION ALL SELECT pr.day, pr.xp_earned, pr.solved, pr.student_id FROM projector_results pr WHERE pr.student_id IN (${kids}) AND pr.day >= ?
+     ) GROUP BY wk ORDER BY wk`,
+  ).bind(clubId, since, clubId, since, clubId, since),
+]);
+const club = clubRes.results[0] as { id: number; name: string; starter_version: number };
+const classes = classesRes.results as any[];
+const coaches = coachesRes.results as { id: number; name: string; email: string; role: string; owned: number }[];
+const invites = invitesRes.results as { id: number; role: string; note: string; max_uses: number; uses: number; expires_at: number }[];
+const byWeek = new Map((weeksRes.results as { wk: string; xp: number; solved: number; kids: number }[]).map((w) => [w.wk, w]));
+const weeks = Array.from({ length: WEEKS }, (_, i) => {
+  const wk = addDays(since, i * 7);
+  return { wk, xp: byWeek.get(wk)?.xp ?? 0, solved: byWeek.get(wk)?.solved ?? 0, kids: byWeek.get(wk)?.kids ?? 0 };
+});
+const maxKids = Math.max(1, ...weeks.map((w) => w.kids));
+const totalStudents = classes.reduce((n, c) => n + c.students, 0);
+const active7 = classes.reduce((n, c) => n + c.active7, 0);
+const thisWeek = weeks[WEEKS - 1];
+const kpis = [
+  { icon: '🏫', label: 'Clases', value: classes.length },
+  { icon: '🧑‍🏫', label: 'Profes', value: coaches.length },
+  { icon: '👧', label: 'Alumnos', value: totalStudents },
+  { icon: '🔥', label: 'Activos (7 días)', value: `${active7}` + (totalStudents ? ` · ${Math.round((active7 / totalStudents) * 100)}%` : '') },
+  { icon: '🧩', label: 'Problemas esta semana', value: thisWeek.solved },
+  { icon: '⭐', label: 'XP esta semana', value: thisWeek.xp },
+];
+const days = (ts: number) => Math.max(0, Math.ceil((ts - Date.now() / 1000) / 86400));
+---
+<CoachLayout title={`Club · ${club.name}`} wide>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="font-display text-3xl font-extrabold">🏛️ {club.name}</h1>
+      <p class="text-slate-500">Panel del administrador: todas las clases, los profes y la actividad del club.</p>
+    </div>
+    {adminClubs.length > 1 && (
+      <nav class="flex flex-wrap gap-2">{adminClubs.map((c) => <a href={`/profe/club/${c.id}`} class={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ${c.id === clubId ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-200'}`}>{c.name}</a>)}</nav>
+    )}
+  </div>
+
+  <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    {kpis.map((k) => (
+      <div class="ck-card !p-4"><dt class="text-xs font-bold text-slate-500"><span aria-hidden="true">{k.icon}</span> {k.label}</dt><dd class="font-display text-2xl font-extrabold text-brand-800 tabular-nums">{k.value}</dd></div>
+    ))}
+  </dl>
+
+  <section class="ck-card mt-6">
+    <h2 class="font-display text-xl font-extrabold">📈 Actividad del club (últimas {WEEKS} semanas)</h2>
+    <div class="mt-4 flex h-40 items-end gap-2" role="img" aria-label="Alumnos activos por semana">
+      {weeks.map((w) => (
+        <div class="flex flex-1 flex-col items-center gap-1" title={`Semana del ${shortDate(w.wk)}: ${w.kids} alumnos activos, ${w.solved} problemas, ${w.xp} XP`}>
+          <span class="text-xs font-bold tabular-nums text-slate-600">{w.kids || ''}</span>
+          <div class={`w-full rounded-t-lg ${w.kids ? 'bg-gradient-to-t from-brand-600 to-brand-400' : 'bg-slate-100'}`} style={`height:${Math.max(4, (w.kids / maxKids) * 110)}px`}></div>
+          <span class="text-xs text-slate-500">{shortDate(w.wk)}</span>
+        </div>
+      ))}
+    </div>
+    <p class="mt-2 text-sm text-slate-500">Alumnos que han jugado cada semana (deberes, práctica y torneos). Pasa el ratón por una barra para ver problemas y XP.</p>
+  </section>
+
+  <section class="ck-card mt-6 overflow-x-auto !p-0">
+    <h2 class="p-4 font-display text-xl font-extrabold">🏫 Clases ({classes.length})</h2>
+    <table class="w-full min-w-[760px] text-sm">
+      <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
+        <tr><th class="p-3">Clase</th><th class="p-3">Responsable</th><th class="p-3">Alumnos</th><th class="p-3">Activos 7 días</th><th class="p-3">Problemas</th><th class="p-3">Misiones (30 d)</th><th class="p-3">Última actividad</th><th class="p-3"></th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {classes.map((c) => (
+          <tr>
+            <td class="p-3 font-bold">{c.emoji} {c.name} <span class="font-mono text-xs text-slate-600">{c.code}</span></td>
+            <td class="p-3">{c.owner ?? '—'}</td>
+            <td class="p-3 tabular-nums">{c.students}</td>
+            <td class="p-3 tabular-nums">{c.active7}{c.students ? <span class="text-xs text-slate-400"> ({Math.round((c.active7 / c.students) * 100)}%)</span> : null}</td>
+            <td class="p-3 tabular-nums">{c.solved}</td>
+            <td class={`p-3 tabular-nums ${c.missions30 ? '' : 'text-amber-700'}`}>{c.missions30}</td>
+            <td class="p-3">{relativeDay(c.last_day, t)}</td>
+            <td class="p-3 text-right">
+              <a href={`/profe/clase/${c.id}?tab=progreso`} class="ck-btn-sm">{c.mine ? 'Abrir' : '👀 Ver progreso'}</a>
+            </td>
+          </tr>
+        ))}
+        {!classes.length && <tr><td colspan="8" class="p-6 text-center text-slate-500">Aún no hay clases en el club.</td></tr>}
+      </tbody>
+    </table>
+  </section>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="ck-card">
+      <h2 class="font-display text-xl font-extrabold">🧑‍🏫 Profes ({coaches.length})</h2>
+      <ul class="mt-3 space-y-2">
+        {coaches.map((c) => (
+          <li class="rounded-2xl bg-slate-50 p-3 text-sm">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="min-w-0 flex-1 font-bold">{c.name} <span class="font-normal text-slate-500">{c.email}</span></p>
+              <span class={`rounded-full px-2 py-0.5 text-xs font-bold ${c.role === 'admin' ? 'bg-brand-100 text-brand-700' : 'bg-white text-slate-600'}`}>{c.role === 'admin' ? '👑 Admin' : 'Profe'}</span>
+              <span class="text-xs text-slate-500">{c.owned} {c.owned === 1 ? 'clase' : 'clases'}</span>
+            </div>
+            {c.id !== coach.id && (
+              <div class="mt-2 flex flex-wrap gap-2">
+                <form data-admin><input type="hidden" name="action" value="role" /><input type="hidden" name="coachId" value={c.id} /><input type="hidden" name="role" value={c.role === 'admin' ? 'coach' : 'admin'} />
+                  <button class="ck-btn-sm">{c.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button></form>
+                <form data-admin><input type="hidden" name="action" value="reset-link" /><input type="hidden" name="coachId" value={c.id} />
+                  <button class="ck-btn-sm" title="Para cuando olvida su contraseña">🔑 Enlace de contraseña</button></form>
+                <form data-admin data-confirm={`¿Quitar a ${c.name} del club? Sus clases pasarán a ti y sus actividades privadas quedarán en la biblioteca del club.`}>
+                  <input type="hidden" name="action" value="remove-coach" /><input type="hidden" name="coachId" value={c.id} />
+                  <button class="ck-btn-sm !text-rose-600">Quitar del club</button></form>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p class="mt-3 text-xs text-slate-500">🔑 El enlace de contraseña sirve una vez y caduca en 48 horas.{mailEnabled() ? ' Los profes también pueden pedirlo por email.' : ' Esta instalación no envía emails: envíaselo tú por WhatsApp.'}</p>
+    </section>
+
+    <section class="ck-card space-y-4">
+      <h2 class="font-display text-xl font-extrabold">🎟️ Invitar profes</h2>
+      <p class="text-sm text-slate-500">Solo se puede crear una cuenta de profe con una invitación. Crea un código y envíaselo.</p>
+      <form data-admin class="grid gap-2 sm:grid-cols-2">
+        <input type="hidden" name="action" value="invite" />
+        <input name="note" maxlength="60" placeholder="Para quién (opcional)" class="ck-input sm:col-span-2" />
+        <label class="text-sm font-bold">Rol
+          <select name="role" class="ck-input mt-1 w-full"><option value="coach">Profe</option><option value="admin">Administrador</option></select>
+        </label>
+        <label class="text-sm font-bold">Usos
+          <input name="maxUses" type="number" min="1" max="50" value="1" class="ck-input mt-1 w-full" />
+        </label>
+        <label class="text-sm font-bold">Caduca en (días)
+          <input name="days" type="number" min="1" max="30" value="7" class="ck-input mt-1 w-full" />
+        </label>
+        <div class="flex items-end"><button class="ck-btn ck-btn-primary w-full">Crear invitación</button></div>
+      </form>
+      <div data-result data-club={clubId} hidden class="space-y-2 rounded-2xl bg-emerald-50 p-3 text-sm"></div>
+      {invites.length > 0 && (
+        <div>
+          <p class="text-sm font-bold">Invitaciones activas</p>
+          <ul class="mt-2 space-y-1 text-sm">
+            {invites.map((i) => (
+              <li class="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                <span class="min-w-0 flex-1">{i.note || 'Sin nota'} · {i.role === 'admin' ? '👑 admin' : 'profe'} · {i.uses}/{i.max_uses} usos · caduca en {days(i.expires_at)} días</span>
+                <form data-admin data-confirm="¿Anular esta invitación? Ya no servirá para crear cuentas."><input type="hidden" name="action" value="revoke-invite" /><input type="hidden" name="inviteId" value={i.id} /><button class="min-h-11 rounded-xl px-3 text-sm font-bold text-rose-700 hover:bg-rose-50">Anular</button></form>
+              </li>
+            ))}
+          </ul>
+          <p class="mt-1 text-xs text-slate-500">Por seguridad, el código solo se muestra al crearlo.</p>
+        </div>
+      )}
+    </section>
+
+    <section class="ck-card space-y-3">
+      <h2 class="font-display text-xl font-extrabold">⚙️ Club</h2>
+      <form data-admin class="flex flex-wrap gap-2">
+        <input type="hidden" name="action" value="rename" />
+        <input name="name" value={club.name} maxlength="60" required class="ck-input min-w-0 flex-1" aria-label="Nombre del club" />
+        <button class="ck-btn-sm">Guardar nombre</button>
+      </form>
+      {club.starter_version < STARTER_VERSION ? (
+        <form data-admin class="rounded-2xl bg-gold-50 p-3 text-sm">
+          <input type="hidden" name="action" value="starter" />
+          <p class="font-bold">📦 Contenido inicial</p>
+          <p class="text-slate-600">Añade a la biblioteca del club lecciones, problemas y 3 mapas de aventura (peques, exploradores y maestros) listos para asignar.</p>
+          <button class="ck-btn-sm mt-2">Añadir contenido inicial</button>
+        </form>
+      ) : <p class="text-sm text-slate-500">📦 El contenido inicial ya está en la biblioteca del club.</p>}
+    </section>
+  </div>
+
+  <script>
+    import { whatsappText } from '../../../scripts/share';
+    const box = document.querySelector<HTMLDivElement>('[data-result]')!;
+    const clubId = Number(box.dataset.club);
+    document.querySelectorAll<HTMLFormElement>('form[data-admin]').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
+        const data: Record<string, unknown> = { clubId };
+        new FormData(form).forEach((v, k) => { data[k] = v; });
+        const btn = form.querySelector('button');
+        if (btn) btn.disabled = true;
+        const res = await fetch('/api/coach/club-admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; link?: string; id?: number };
+        if (btn) btn.disabled = false;
+        if (!res.ok) { alert(body.error ?? 'Algo ha fallado'); return; }
+        if (body.link) {
+          const isInvite = !!body.code;
+          const text = isInvite
+            ? `¡Hola! Te invito a Odisea Miranda como profe. Crea tu cuenta aquí: ${body.link}\nCódigo de invitación: ${body.code}`
+            : `Hola, aquí tienes el enlace para elegir una contraseña nueva en Odisea Miranda (sirve una vez y caduca en 48 h):\n${body.link}`;
+          box.hidden = false;
+          box.replaceChildren();
+          const heading = document.createElement('p');
+          heading.className = 'font-bold';
+          heading.textContent = isInvite ? `🎟️ Código: ${body.code}` : '🔑 Enlace para cambiar la contraseña';
+          const url = document.createElement('p');
+          url.className = 'break-all font-mono text-xs';
+          url.textContent = body.link;
+          const actions = document.createElement('div');
+          actions.className = 'flex flex-wrap gap-2';
+          const wa = document.createElement('a');
+          wa.className = 'ck-btn-sm !bg-emerald-500 !text-white';
+          wa.target = '_blank';
+          wa.href = whatsappText(text);
+          wa.textContent = '💬 Enviar por WhatsApp';
+          const cp = document.createElement('button');
+          cp.className = 'ck-btn-sm';
+          cp.type = 'button';
+          cp.textContent = '🔗 Copiar';
+          cp.onclick = () => navigator.clipboard?.writeText(text).then(() => { cp.textContent = '✅ Copiado'; });
+          const note = document.createElement('p');
+          note.className = 'text-xs text-slate-500';
+          note.textContent = 'Solo se muestra ahora. Guárdalo o envíalo ya.';
+          // appendChild: the Workers types shadow Element.append with HTMLRewriter's signature.
+          actions.appendChild(wa);
+          actions.appendChild(cp);
+          for (const el of [heading, url, actions, note]) box.appendChild(el);
+          box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        location.reload();
+      });
+    });
+  </script>
+</CoachLayout>

@@ -1,6 +1,17 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { isLocked, recordFailure } from '../../lib/auth';
+import { normalizeInvite, peekInvite } from '../../lib/clubs';
 if (Astro.locals.coach) return Astro.redirect('/profe');
+// Invitation links look like /profe/registro?invitacion=ABCD-EFGH. Lookups share the sign-up lockout.
+const code = normalizeInvite(Astro.url.searchParams.get('invitacion') ?? '');
+const lockKey = `register:${Astro.clientAddress ?? ''}`;
+let invite: Awaited<ReturnType<typeof peekInvite>> = null;
+if (code && !(await isLocked(Astro.locals.db, lockKey))) {
+  invite = await peekInvite(Astro.locals.db, code);
+  if (!invite) await recordFailure(Astro.locals.db, lockKey);
+}
+const firstAccount = !(await Astro.locals.db.prepare('SELECT 1 FROM coaches LIMIT 1').first());
 ---
 <Base title="Registro profes · Odisea Miranda">
   <div class="om-night flex min-h-dvh flex-col items-center justify-center gap-5 p-4">
@@ -8,11 +19,36 @@ if (Astro.locals.coach) return Astro.redirect('/profe');
     <form data-api="/api/auth/coach-register" data-redirect="/profe" class="ck-card w-full max-w-sm space-y-3 text-slate-800">
       <a href="/profe/login" class="text-sm font-bold text-brand-600">← Ya tengo cuenta</a>
       <h1 class="font-display text-3xl font-extrabold text-brand-800">Crea tu cuenta de profe</h1>
-      <input name="name" required placeholder="Tu nombre" class="ck-input w-full" />
-      <input name="email" type="email" required placeholder="Email" class="ck-input w-full" />
+      {invite ? (
+        <p class="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-800">🎟️ Te han invitado a <b>{invite.club_name}</b>{invite.role === 'admin' ? ' como administrador' : ''}.</p>
+      ) : code ? (
+        <p class="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">Esa invitación ya no es válida. Pide una nueva a tu club.</p>
+      ) : null}
+      <input name="name" required maxlength="60" placeholder="Tu nombre" class="ck-input w-full" autocomplete="name" />
+      <input name="email" type="email" required placeholder="Email" class="ck-input w-full" autocomplete="email" />
       <input name="password" type="password" required minlength="8" placeholder="Contraseña (mín. 8)" class="ck-input w-full" autocomplete="new-password" />
-      <input name="clubName" placeholder="Nombre de tu club (opcional)" class="ck-input w-full" />
-      <p class="text-xs text-slate-500">Si vas a unirte al club de otro profe, deja el club vacío: él te dará acceso a su clase.</p>
+      {firstAccount ? (
+        <>
+          <p class="text-sm text-slate-600">Eres la primera cuenta: crea tu club y serás su administrador.</p>
+          <input name="clubName" required maxlength="60" placeholder="Nombre de tu club" class="ck-input w-full" />
+        </>
+      ) : (
+        <>
+          <label class="block text-sm font-bold">🎟️ Código de invitación
+            <input name="invite" value={invite ? code : ''} placeholder="ABCD-EFGH" class="ck-input mt-1 w-full font-mono uppercase tracking-widest" autocomplete="off" />
+          </label>
+          <p class="text-xs text-slate-500">Pídeselo a quien administra tu club: lo crea en «🏛️ Mi club».</p>
+          {!invite && (
+            <details class="rounded-2xl bg-slate-50 p-3 text-sm">
+              <summary class="cursor-pointer font-bold">🏛️ Quiero dar de alta un club nuevo</summary>
+              <p class="mt-2 text-xs text-slate-500">Necesitas el código de alta que te da el equipo de Odisea Miranda. Deja vacío el código de invitación.</p>
+              <input name="signupCode" placeholder="Código de alta" class="ck-input mt-2 w-full" autocomplete="off" />
+              <input name="clubName" maxlength="60" placeholder="Nombre del club" class="ck-input mt-2 w-full" />
+            </details>
+          )}
+        </>
+      )}
+      <p class="text-xs text-slate-500">Al crear la cuenta aceptas el <a href="/aviso-legal" class="font-bold text-brand-600">aviso legal</a> y la <a href="/privacidad" class="font-bold text-brand-600">política de privacidad</a>.</p>
       <p data-error class="text-sm font-bold text-rose-600"></p>
       <button type="submit" class="ck-btn ck-btn-primary w-full">Crear cuenta</button>
     </form>

@@ -6,6 +6,7 @@ import { copy, QR, whatsappUrl } from '../ui/QR';
 export interface StudentInfo {
   id: number; name: string; avatar: string; username: string; token: string; age_group: AgeGroup;
   xp: number; level: number; streak: number; last: string;
+  consent: boolean; // parents' consent recorded
 }
 interface Created { id: number; name: string; avatar: string; username: string; password: string; pin: string; token: string }
 interface Props { classId: number; classCode: string; className: string; origin: string; canManage: boolean; canView?: boolean; students: StudentInfo[] }
@@ -29,6 +30,8 @@ export default function StudentManager({ classId, classCode, className, origin, 
   const [delPass, setDelPass] = useState('');
   const [delErr, setDelErr] = useState('');
   const [newName, setNewName] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [family, setFamily] = useState<{ link: string; message: string } | null>(null);
   const classLink = `${origin}/c/${classCode}`;
   const personal = (t: string) => `${origin}/u/${t}`;
 
@@ -39,10 +42,11 @@ export default function StudentManager({ classId, classCode, className, origin, 
     setErr('');
     const list = names.split('\n').map((n) => n.trim()).filter(Boolean).map((name) => ({ name, ageGroup: age }));
     try {
-      const r = await api('/api/coach/students', 'POST', { classId, students: list });
+      const r = await api('/api/coach/students', 'POST', { classId, consent, students: list });
       setCreated(r.created);
-      setStudents([...students, ...r.created.map((c: Created) => ({ id: c.id, name: c.name, avatar: c.avatar, username: c.username, token: c.token, age_group: age, xp: 0, level: 1, streak: 0, last: 'nunca' }))]);
+      setStudents([...students, ...r.created.map((c: Created) => ({ id: c.id, name: c.name, avatar: c.avatar, username: c.username, token: c.token, age_group: age, xp: 0, level: 1, streak: 0, last: 'nunca', consent: true }))]);
       setNames('');
+      setConsent(false);
     } catch (ex) { setErr((ex as Error).message); }
   }
 
@@ -57,6 +61,16 @@ export default function StudentManager({ classId, classCode, className, origin, 
         setStudents(students.map((x) => (x.id === s.id ? upd : x)));
         setOpen(upd);
         setSecret({ label: 'Enlace nuevo creado. El anterior ya no funciona y se cerraron sus sesiones.', value: '' });
+      }
+      if (act === 'consent') {
+        const upd = { ...s, consent: true };
+        setStudents(students.map((x) => (x.id === s.id ? upd : x)));
+        setOpen(upd);
+      }
+      if (act === 'family-link') setFamily({ link: r.link, message: r.message });
+      if (act === 'family-revoke') {
+        setFamily(null);
+        setSecret({ label: 'Enlace de familia anulado. El anterior ya no funciona.', value: '' });
       }
       if (act === 'update') {
         const upd = { ...s, ...(extra.avatar ? { avatar: extra.avatar as string } : {}), ...(extra.ageGroup ? { age_group: extra.ageGroup as AgeGroup } : {}), ...(extra.name ? { name: extra.name as string } : {}) };
@@ -112,13 +126,14 @@ export default function StudentManager({ classId, classCode, className, origin, 
               <div class="min-w-0 flex-1">
                 <p class="font-bold">{s.name} <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{AGE_GROUPS[s.age_group]?.emoji} {AGE_GROUPS[s.age_group]?.label}</span></p>
                 <p class="text-xs text-slate-500">@{s.username} · Nivel {s.level} · {s.xp} XP · 🔥 {s.streak} · última vez {s.last}</p>
+                {canManage && !s.consent && <p class="text-xs font-bold text-amber-700">⚠️ Falta registrar el consentimiento de la familia</p>}
               </div>
               <div class="flex gap-2">
                 {canView && <a class="ck-btn-sm" href={`/profe/clase/${classId}/alumno/${s.id}`} title="Ver su progreso">📊 Ficha</a>}
                 {canManage && (
                   <>
                     <a class="ck-btn-sm !bg-emerald-50 !text-emerald-700" target="_blank" href={whatsappUrl(familyMsg(s))} title="Enviar acceso a la familia">💬</a>
-                    <button class="ck-btn-sm" onClick={() => { setSecret(null); setDelPass(''); setDelErr(''); setNewName(s.name); setOpen(s); }}>🔑 Acceso</button>
+                    <button class="ck-btn-sm" onClick={() => { setSecret(null); setFamily(null); setDelPass(''); setDelErr(''); setNewName(s.name); setOpen(s); }}>🔑 Acceso</button>
                   </>
                 )}
               </div>
@@ -140,8 +155,12 @@ export default function StudentManager({ classId, classCode, className, origin, 
                 {Object.entries(AGE_GROUPS).map(([k, v]) => <option value={k}>{v.emoji} {v.label} ({v.range})</option>)}
               </select>
             </label>
-            <button class="ck-btn ck-btn-primary">Crear alumnos</button>
           </div>
+          <label class="flex items-start gap-2 rounded-2xl bg-brand-50 p-3 text-sm">
+            <input type="checkbox" class="mt-1 h-5 w-5 shrink-0" checked={consent} onChange={(e) => setConsent((e.target as HTMLInputElement).checked)} required />
+            <span>Confirmo que tengo el <b>consentimiento de la madre, padre o tutor</b> de cada alumno para darle de alta y guardar su progreso, según la <a href="/privacidad" target="_blank" class="font-bold text-brand-700 underline">política de privacidad</a>. Usa solo el nombre o un apodo: no hace falta ningún otro dato.</span>
+          </label>
+          <button class="ck-btn ck-btn-primary" disabled={!consent}>Crear alumnos</button>
         </form>
       )}
 
@@ -188,10 +207,36 @@ export default function StudentManager({ classId, classCode, className, origin, 
                 {secret.value && <p class="font-mono text-2xl font-black">{secret.value}</p>}
               </div>
             )}
+            <div class="space-y-2 rounded-2xl bg-emerald-50 p-3">
+              <p class="font-bold">👪 Informe para la familia</p>
+              <p class="text-xs text-slate-600">Un enlace de solo lectura con su progreso y un resumen de la semana para enviar por WhatsApp.</p>
+              {family ? (
+                <>
+                  <pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-2 text-xs">{family.message}</pre>
+                  <div class="flex flex-wrap gap-2">
+                    <a class="ck-btn-sm !bg-emerald-500 !text-white" target="_blank" href={whatsappUrl(family.message)}>💬 Enviar resumen</a>
+                    <button class="ck-btn-sm" onClick={() => flashCopy(family.link, 'f')}>{copied === 'f' ? '✅ Copiado' : '🔗 Copiar enlace'}</button>
+                    <a class="ck-btn-sm" href={family.link} target="_blank">👀 Ver</a>
+                    <button class="ck-btn-sm !text-rose-600" onClick={() => confirm('El enlace actual dejará de funcionar. ¿Seguro?') && action(open, 'family-revoke')}>Anular enlace</button>
+                  </div>
+                </>
+              ) : <button class="ck-btn-sm !bg-emerald-500 !text-white" onClick={() => action(open, 'family-link')}>📝 Preparar informe de la semana</button>}
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <button class="ck-btn-sm justify-center" onClick={() => action(open, 'reset-password')}>🔑 Nueva contraseña</button>
               <button class="ck-btn-sm justify-center" onClick={() => action(open, 'reset-pin')}>🍎 Nuevos dibujos</button>
               <button class="ck-btn-sm col-span-2 justify-center" onClick={() => confirm('Se invalidará el enlace/QR actual y se cerrará la sesión en todos sus dispositivos. ¿Seguro?') && action(open, 'new-link')}>♻️ Nuevo enlace (y cerrar sesiones)</button>
+            </div>
+            <div class="space-y-2 rounded-2xl bg-slate-50 p-3 text-sm">
+              <p class="font-bold">🔒 Privacidad</p>
+              {open.consent ? <p class="text-emerald-700">✅ Consentimiento de la familia registrado.</p> : (
+                <div class="space-y-2">
+                  <p class="font-bold text-amber-700">⚠️ No consta el consentimiento de la familia.</p>
+                  <button class="ck-btn-sm" onClick={() => confirm(`¿Confirmas que tienes el consentimiento de la familia de ${open.name}?`) && action(open, 'consent')}>✅ Registrar consentimiento</button>
+                </div>
+              )}
+              <a class="ck-btn-sm" href={`/api/coach/students/${open.id}`} download>📥 Descargar todos sus datos</a>
+              <p class="text-xs text-slate-500">Si la familia pide sus datos o que se borren: descárgalos aquí y bórralo en ✏️ Editar.</p>
             </div>
             <details class="rounded-2xl bg-slate-50 p-3">
               <summary class="cursor-pointer font-bold">✏️ Editar</summary>
@@ -208,7 +253,7 @@ export default function StudentManager({ classId, classCode, className, origin, 
                 </div>
                 <form onSubmit={(e) => remove(open, e)} class="space-y-2 rounded-2xl bg-rose-50 p-3">
                   <p class="text-sm font-bold text-rose-700">🗑️ Borrar alumno</p>
-                  <p class="text-xs text-rose-700">Se borran su cuenta y todo su progreso. No se puede deshacer.</p>
+                  <p class="text-xs text-rose-700">Se borran su cuenta y todos sus datos y progreso (derecho de supresión). No se puede deshacer.</p>
                   <input type="password" required autocomplete="current-password" class="ck-input w-full" placeholder="Tu contraseña para confirmar" value={delPass} onInput={(e) => setDelPass((e.target as HTMLInputElement).value)} />
                   {delErr && <p class="text-sm font-bold text-rose-600">{delErr}</p>}
                   <button class="ck-btn-sm !bg-rose-600 !text-white">Borrar a {open.name}</button>

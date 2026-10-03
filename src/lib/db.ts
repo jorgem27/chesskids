@@ -9,6 +9,8 @@ export interface StudentRow {
   voice: string; // Potróculo voice id, 'random' or 'none'
   puzzle_rating: number; // "Entrena" rating, 0 = not placed yet
   puzzle_games: number;
+  consent_at: number | null; // parental consent recorded by the coach (unix time)
+  family_token: string | null; // read-only family report link
 }
 
 export interface ClassRow { id: number; club_id: number; name: string; code: string; emoji: string; color: string; weekly_goal: number }
@@ -31,9 +33,18 @@ export function today(): string {
   return dayKey(new Date());
 }
 
+/**
+ * A coach's permissions on a class: their class_permissions row or, failing that, read-only
+ * access when they are an admin of the class's club (computed live, so losing the role revokes it).
+ */
 export async function classPerm(db: D1Database, coachId: number, classId: number): Promise<Perm | null> {
-  return db.prepare('SELECT is_owner, can_view_progress, can_create_content, can_manage_students FROM class_permissions WHERE coach_id = ? AND class_id = ?')
+  const row = await db.prepare('SELECT is_owner, can_view_progress, can_create_content, can_manage_students FROM class_permissions WHERE coach_id = ? AND class_id = ?')
     .bind(coachId, classId).first<Perm>();
+  if (row) return row;
+  const admin = await db.prepare(
+    "SELECT 1 FROM classes c JOIN club_coaches cc ON cc.club_id = c.club_id AND cc.coach_id = ? AND cc.role = 'admin' WHERE c.id = ?",
+  ).bind(coachId, classId).first();
+  return admin ? { is_owner: 0, can_view_progress: 1, can_create_content: 0, can_manage_students: 0 } : null;
 }
 
 export async function isClubMember(db: D1Database, coachId: number, clubId: number): Promise<string | null> {

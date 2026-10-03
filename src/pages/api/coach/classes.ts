@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { classColorHex, makeClassCode } from '../../../lib/catalog';
 import { checkCoachPassword } from '../../../lib/auth';
+import { eraseStudentsStatements } from '../../../lib/privacy';
 import { classPerm, isClubMember, json, readJson } from '../../../lib/db';
 
 export const POST: APIRoute = async ({ locals, request }) => {
@@ -44,14 +45,9 @@ export const DELETE: APIRoute = async ({ locals, request }) => {
   if (!perm?.is_owner) return json({ error: 'Solo el profe responsable puede borrar la clase' }, 403);
   const bad = await checkCoachPassword(db, locals.coach!.id, b.password);
   if (bad) return json({ error: bad }, 403);
-  const kids = "(SELECT id FROM students WHERE class_id = ?)";
   await db.batch([
-    db.prepare(`DELETE FROM sessions WHERE user_type = 'student' AND user_id IN ${kids}`).bind(classId),
-    db.prepare(`DELETE FROM attempts WHERE student_id IN ${kids}`).bind(classId),
-    db.prepare(`DELETE FROM student_stickers WHERE student_id IN ${kids}`).bind(classId),
-    db.prepare(`DELETE FROM projector_results WHERE student_id IN ${kids}`).bind(classId),
+    ...eraseStudentsStatements(db, 'class_id = ?', classId),
     db.prepare('DELETE FROM projector_sessions WHERE class_id = ?').bind(classId),
-    db.prepare('DELETE FROM students WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM assignments WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM class_permissions WHERE class_id = ?').bind(classId),
     db.prepare('DELETE FROM classes WHERE id = ?').bind(classId),
